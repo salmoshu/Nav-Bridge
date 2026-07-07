@@ -1,0 +1,7 @@
+node_modules/
+out/
+coverage/
+tmp/
+.agents/
+.git/
+package-lock.json

@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Package managers
+yarn-error.log*
+npm-debug.log*
+pnpm-debug.log*
+yarn.lock
+.pnpm-lock.yaml
+
+# Yarn Berry (if used)
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# Build outputs
+dist/
+build/
+out/
+.release/
+.webpack/
+
+# Vite
+tmp.vite/
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint / Prettier caches
+.eslintcache
+.prettiercache
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Electron / electron-builder
+release/
+installer/
+
+# Temporary local files
+tmp/
+.temp/
+.cache/
+
+# Native module build artifacts
+prebuilds/
+build/Release/
+*.node
