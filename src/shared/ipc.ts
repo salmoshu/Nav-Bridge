@@ -26,6 +26,8 @@ export interface NavBridgeAPI {
   closeWindow(): Promise<void>;
   startWindowDrag(offsetX: number, offsetY: number): Promise<void>;
   stopWindowDrag(): Promise<void>;
+  disableWindowResize(): Promise<void>;
+  enableWindowResize(): Promise<void>;
   onStatus(callback: (status: StreamStatus) => void): () => void;
   onLog(callback: (log: LogEntry) => void): () => void;
   onAlwaysOnTopChange(callback: (alwaysOnTop: boolean) => void): () => void;
@@ -43,6 +45,8 @@ export const ipcChannels = {
   closeWindow: "nav-bridge:window-close",
   startWindowDrag: "nav-bridge:window-drag-start",
   stopWindowDrag: "nav-bridge:window-drag-stop",
+  disableWindowResize: "nav-bridge:window-disable-resize",
+  enableWindowResize: "nav-bridge:window-enable-resize",
   windowAlwaysOnTop: "nav-bridge:window-always-on-top",
   status: "nav-bridge:status",
   log: "nav-bridge:log"

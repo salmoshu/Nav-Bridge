@@ -59,6 +59,12 @@ export function AppTitleBar({
         borderBottom: 1,
         borderColor: "divider"
       }}
+      onMouseEnter={() => {
+        void api.disableWindowResize();
+      }}
+      onMouseLeave={() => {
+        void api.enableWindowResize();
+      }}
       onMouseDown={(event) => {
         // Only start dragging when pressing the header itself or the title area,
         // not the interactive controls on the right.

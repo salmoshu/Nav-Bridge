@@ -14,7 +14,8 @@ export class IpcBridge {
   private server?: StreamServer;
   private lifecycle = Promise.resolve();
   private dragInterval?: NodeJS.Timeout;
-  private wasResizableBeforeDrag = true;
+  private desiredResizable = true;
+  private dragging = false;
 
   public constructor(
     private readonly window: BrowserWindow,
@@ -33,6 +34,8 @@ export class IpcBridge {
     ipcMain.removeHandler(ipcChannels.closeWindow);
     ipcMain.removeHandler(ipcChannels.startWindowDrag);
     ipcMain.removeHandler(ipcChannels.stopWindowDrag);
+    ipcMain.removeHandler(ipcChannels.disableWindowResize);
+    ipcMain.removeHandler(ipcChannels.enableWindowResize);
 
     ipcMain.handle(
       ipcChannels.startServer,
@@ -108,11 +111,23 @@ export class IpcBridge {
       this.window.close();
     });
 
+    ipcMain.handle(ipcChannels.disableWindowResize, () => {
+      this.desiredResizable = false;
+      if (!this.dragging) {
+        this.window.setResizable(false);
+      }
+    });
+
+    ipcMain.handle(ipcChannels.enableWindowResize, () => {
+      this.desiredResizable = true;
+      if (!this.dragging) {
+        this.window.setResizable(true);
+      }
+    });
+
     ipcMain.handle(ipcChannels.startWindowDrag, (_event, offsetX: number, offsetY: number) => {
       if (this.dragInterval != undefined) return;
-      // Disable resizing while dragging from the header so that clicking near the
-      // window edge does not trigger an unintended resize.
-      this.wasResizableBeforeDrag = this.window.isResizable();
+      this.dragging = true;
       this.window.setResizable(false);
       const initialBounds = this.window.getBounds();
       const initialCursor = screen.getCursorScreenPoint();
@@ -130,7 +145,8 @@ export class IpcBridge {
         clearInterval(this.dragInterval);
         this.dragInterval = undefined;
       }
-      this.window.setResizable(this.wasResizableBeforeDrag);
+      this.dragging = false;
+      this.window.setResizable(this.desiredResizable);
     });
   }
 
@@ -139,6 +155,8 @@ export class IpcBridge {
       clearInterval(this.dragInterval);
       this.dragInterval = undefined;
     }
+    this.dragging = false;
+    this.desiredResizable = true;
     await this.enqueue(async () => {
       await this.server?.stop();
       this.server = undefined;

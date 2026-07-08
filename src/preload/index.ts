@@ -29,6 +29,12 @@ const api: NavBridgeAPI = {
   stopWindowDrag: async () => {
     await ipcRenderer.invoke(ipcChannels.stopWindowDrag);
   },
+  disableWindowResize: async () => {
+    await ipcRenderer.invoke(ipcChannels.disableWindowResize);
+  },
+  enableWindowResize: async () => {
+    await ipcRenderer.invoke(ipcChannels.enableWindowResize);
+  },
   onStatus: (callback: (status: StreamStatus) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, status: StreamStatus): void => callback(status);
     ipcRenderer.on(ipcChannels.status, listener);
