@@ -22,24 +22,45 @@ Nav-Bridge 是一个独立的 Electron 桌面应用，用于把外部 GNSS / 导
 ## 环境要求
 
 - Node.js >= 20
-- npm >= 10
+- Yarn 1.22.x
 - Windows、Linux 或 macOS
 
 串口功能依赖 `serialport` 原生模块。不同平台打包时可能需要重新构建原生依赖。
 
+## 国内网络注意事项
+
+项目已配置 `.yarnrc`，默认使用 npmmirror 镜像：
+
+- npm 包 registry：`https://registry.npmmirror.com`
+- Electron 二进制镜像：`https://npmmirror.com/mirrors/electron/`
+
+如果仍然无法下载 Electron 二进制，可临时在命令行设置环境变量后再执行安装：
+
+```powershell
+# PowerShell
+$env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
+yarn install --check-files
+```
+
+```sh
+# Git Bash / Linux / macOS
+export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
+yarn install --check-files
+```
+
 ## 快速开始
 
 ```powershell
-npm install
-npm run dev
+yarn install
+yarn dev
 ```
 
 常用命令：
 
 ```powershell
-npm test
-npm run typecheck
-npm run build
+yarn test
+yarn typecheck
+yarn build
 ```
 
 ## 使用方式

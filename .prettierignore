@@ -4,4 +4,4 @@ coverage/
 tmp/
 .agents/
 .git/
-package-lock.json
+yarn.lock

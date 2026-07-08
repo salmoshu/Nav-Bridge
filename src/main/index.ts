@@ -1,20 +1,10 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
 import { IpcBridge } from "./ipc/bridge";
+import { createMainWindowOptions } from "./windowOptions";
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 900,
-    minHeight: 620,
-    title: "Nav-Bridge",
-    webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
+  const mainWindow = new BrowserWindow(createMainWindowOptions());
 
   const bridge = new IpcBridge(mainWindow);
   bridge.register();

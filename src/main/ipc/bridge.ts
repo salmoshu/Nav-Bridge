@@ -2,20 +2,19 @@ import type { BrowserWindow } from "electron";
 import { dialog, ipcMain, screen } from "electron";
 import { writeFile } from "node:fs/promises";
 import { SerialPort } from "serialport";
-import type { SerialPortInfo, StartServerResult } from "../../shared/ipc";
+import type { SerialPortInfo, StartServerResult, WindowResizeEdge } from "../../shared/ipc";
 import { ipcChannels } from "../../shared/ipc";
 import type { LogEntry, StreamConfig } from "../../shared/stream";
 import { ConfigStore } from "../config/ConfigStore";
-import { validateStreamConfig } from "../config/validateStreamConfig";
+import { validateDuplicateClientEndpoints, validateStreamConfig } from "../config/validateStreamConfig";
 import { StreamServer } from "../stream/StreamServer";
 import { createAdapter } from "../stream/createAdapter";
+import { appWindowMinHeight } from "../windowOptions";
 
 export class IpcBridge {
   private server?: StreamServer;
   private lifecycle = Promise.resolve();
-  private dragInterval?: NodeJS.Timeout;
-  private desiredResizable = true;
-  private dragging = false;
+  private resizeInterval?: NodeJS.Timeout;
 
   public constructor(
     private readonly window: BrowserWindow,
@@ -32,16 +31,15 @@ export class IpcBridge {
     ipcMain.removeHandler(ipcChannels.minimizeWindow);
     ipcMain.removeHandler(ipcChannels.toggleAlwaysOnTop);
     ipcMain.removeHandler(ipcChannels.closeWindow);
-    ipcMain.removeHandler(ipcChannels.startWindowDrag);
-    ipcMain.removeHandler(ipcChannels.stopWindowDrag);
-    ipcMain.removeHandler(ipcChannels.disableWindowResize);
-    ipcMain.removeHandler(ipcChannels.enableWindowResize);
+    ipcMain.removeHandler(ipcChannels.startWindowResize);
+    ipcMain.removeHandler(ipcChannels.stopWindowResize);
 
     ipcMain.handle(
       ipcChannels.startServer,
       async (_event, config: StreamConfig): Promise<StartServerResult> => {
         return await this.enqueue(async () => {
           validateStreamConfig(config);
+          validateDuplicateClientEndpoints(config.input, config.outputs);
           await this.server?.stop();
           this.server = this.createServer(config);
           this.server.onStatus((status) => this.window.webContents.send(ipcChannels.status, status));
@@ -111,52 +109,43 @@ export class IpcBridge {
       this.window.close();
     });
 
-    ipcMain.handle(ipcChannels.disableWindowResize, () => {
-      this.desiredResizable = false;
-      if (!this.dragging) {
-        this.window.setResizable(false);
-      }
-    });
+    ipcMain.handle(ipcChannels.startWindowResize, (_event, edge: WindowResizeEdge) => {
+      if (this.resizeInterval != undefined) return;
+      if (edge !== "top" && edge !== "bottom") return;
 
-    ipcMain.handle(ipcChannels.enableWindowResize, () => {
-      this.desiredResizable = true;
-      if (!this.dragging) {
-        this.window.setResizable(true);
-      }
-    });
-
-    ipcMain.handle(ipcChannels.startWindowDrag, (_event, offsetX: number, offsetY: number) => {
-      if (this.dragInterval != undefined) return;
-      this.dragging = true;
-      this.window.setResizable(false);
       const initialBounds = this.window.getBounds();
       const initialCursor = screen.getCursorScreenPoint();
-      this.dragInterval = setInterval(() => {
+      this.resizeInterval = setInterval(() => {
         const cursor = screen.getCursorScreenPoint();
-        this.window.setPosition(
-          initialBounds.x + (cursor.x - initialCursor.x),
-          initialBounds.y + (cursor.y - initialCursor.y)
+        const deltaY = cursor.y - initialCursor.y;
+        const height = Math.max(
+          appWindowMinHeight,
+          edge === "bottom" ? initialBounds.height + deltaY : initialBounds.height - deltaY
         );
+        const y = edge === "top" ? initialBounds.y + initialBounds.height - height : initialBounds.y;
+
+        this.window.setBounds({
+          x: initialBounds.x,
+          y,
+          width: initialBounds.width,
+          height
+        });
       }, 16);
     });
 
-    ipcMain.handle(ipcChannels.stopWindowDrag, () => {
-      if (this.dragInterval != undefined) {
-        clearInterval(this.dragInterval);
-        this.dragInterval = undefined;
+    ipcMain.handle(ipcChannels.stopWindowResize, () => {
+      if (this.resizeInterval != undefined) {
+        clearInterval(this.resizeInterval);
+        this.resizeInterval = undefined;
       }
-      this.dragging = false;
-      this.window.setResizable(this.desiredResizable);
     });
   }
 
   public async dispose(): Promise<void> {
-    if (this.dragInterval != undefined) {
-      clearInterval(this.dragInterval);
-      this.dragInterval = undefined;
+    if (this.resizeInterval != undefined) {
+      clearInterval(this.resizeInterval);
+      this.resizeInterval = undefined;
     }
-    this.dragging = false;
-    this.desiredResizable = true;
     await this.enqueue(async () => {
       await this.server?.stop();
       this.server = undefined;

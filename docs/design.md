@@ -305,7 +305,7 @@ Nav-Bridge/
 | 串口     | `serialport` 12.x                           | Electron 主进程事实标准。                                                                                 |
 | TCP/UDP  | Node.js `net` / `dgram`                     | 原生模块，无需额外依赖。                                                                                  |
 | 测试     | Jest + ts-jest                              | 与 Lichtblick 测试栈一致。                                                                                |
-| 包管理   | Yarn 4 / npm 10                             | 根据实际环境选择。                                                                                        |
+| 包管理   | Yarn 1.22.x                                 | 使用 Yarn Classic 管理依赖，提交 `yarn.lock` 保证安装可复现。                                             |
 | 代码规范 | ESLint + Prettier                           | 参考 Lichtblick 配置。                                                                                    |
 
 ### 7.1 与 Lichtblick 技术栈的映射

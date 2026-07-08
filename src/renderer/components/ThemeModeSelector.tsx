@@ -12,6 +12,11 @@ export const themeModeMenuProps = {
     sx: {
       WebkitAppRegion: "no-drag",
       cursor: "pointer",
+      userSelect: "none",
+      "& *": {
+        cursor: "pointer !important",
+        userSelect: "none !important"
+      },
       "& .MuiMenuItem-root": {
         cursor: "pointer",
         minHeight: 28,
@@ -108,12 +113,17 @@ export function ThemeModeSelector({
         }}
         sx={{
           fontSize: "0.75rem",
+          cursor: "pointer",
           "& .MuiSelect-select": {
             py: 0.125,
             px: 0.5,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center"
+            justifyContent: "center",
+            cursor: "pointer"
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(0, 0, 0, 0.23)"
           }
         }}
       >

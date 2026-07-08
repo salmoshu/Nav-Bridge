@@ -35,24 +35,54 @@ export function isNetworkEndpoint(endpoint: { type: StreamType }): boolean {
   return networkTypes.includes(endpoint.type);
 }
 
+function networkEndpointDisplay(endpoint: StreamEndpoint): string {
+  const params = endpoint.params as unknown as Record<string, unknown>;
+  const host = endpointHost(endpoint);
+  return `${host}:${params.port}`;
+}
+
 export function endpointSummary(endpoint: StreamEndpoint): string {
+  const { type } = endpoint;
+
+  switch (type) {
+    case "tcp-server":
+      return `TCP server ${networkEndpointDisplay(endpoint)}`;
+    case "tcp-client":
+      return `TCP client ${networkEndpointDisplay(endpoint)}`;
+    case "udp-server":
+      return `UDP server ${networkEndpointDisplay(endpoint)}`;
+    case "udp-client":
+      return `UDP client ${networkEndpointDisplay(endpoint)}`;
+    case "serial":
+      return `Serial ${endpointInfo(endpoint)}`;
+    default:
+      return type;
+  }
+}
+
+export function endpointInfo(endpoint: StreamEndpoint): string {
   const { type } = endpoint;
   const params = endpoint.params as unknown as Record<string, unknown>;
 
   switch (type) {
     case "tcp-server":
-      return `TCP server :${params.port}`;
     case "tcp-client":
-      return `TCP client ${params.host}:${params.port}`;
     case "udp-server":
-      return `UDP server :${params.port}`;
     case "udp-client":
-      return `UDP client ${params.host}:${params.port}`;
+      return networkEndpointDisplay(endpoint);
     case "serial":
-      return `Serial ${params.port} @ ${params.baudRate}`;
+      return `${params.port} @ ${params.baudRate}`;
     default:
       return type;
   }
+}
+
+export function formatLogDialogTitle(endpoint: StreamEndpoint | undefined): string {
+  if (endpoint == undefined) {
+    return "Global logs";
+  }
+  const role = endpoint.id === "input" ? "Input" : "Output";
+  return `Logs for ${role} (${endpointInfo(endpoint)})`;
 }
 
 export function formatEndpointType(type: StreamType): string {

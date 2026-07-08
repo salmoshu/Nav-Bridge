@@ -1,8 +1,9 @@
 import AddIcon from "@mui/icons-material/Add";
+import ArticleIcon from "@mui/icons-material/Article";
+import CircleIcon from "@mui/icons-material/Circle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import SettingsIcon from "@mui/icons-material/Settings";
-import CircleIcon from "@mui/icons-material/Circle";
 import {
   Box,
   Button,
@@ -15,18 +16,18 @@ import {
   Typography
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StreamConfig, StreamEndpoint, StreamMode, StreamStatus, StreamType } from "../../shared/stream";
 import {
   allowedEndpointTypes,
   createDefaultEndpoint,
   createEndpointWithType,
-  endpointHost,
+  endpointInfo,
   formatEndpointType
 } from "../lib/endpointConfig";
 import { buildStatusMap } from "../lib/endpointStatus";
-import { EndpointConfigDialog } from "./EndpointConfigDialog";
 import { useSerialPorts } from "../hooks/useSerialPorts";
+import { EndpointConfigDialog } from "./EndpointConfigDialog";
 
 const statusColor = {
   idle: "#8a8f98",
@@ -36,23 +37,44 @@ const statusColor = {
 } as const;
 
 const MAX_OUTPUTS = 7;
-const endpointGridColumns = "28px 48px 80px minmax(0, 1fr) 48px 48px 56px";
+export const endpointGridColumns = "20px 28px 48px 104px minmax(0,1fr) 48px 48px 80px";
+export const endpointActionButtonSx = {
+  p: 0,
+  width: 20,
+  height: 20
+} as const;
+export const endpointActionIconSx = {
+  fontSize: 16
+} as const;
 
 export function EndpointTable({
   config,
   status,
   onChange,
-  onExport
+  onExport,
+  onShowLogs
 }: {
   config: StreamConfig;
   status?: StreamStatus;
   onChange: (config: StreamConfig) => void;
   onExport: () => void;
+  onShowLogs: (endpointId: string) => void;
 }) {
   const { ports, loading: serialPortsLoading, error: serialPortsError, refresh } = useSerialPorts();
   const statusMap = buildStatusMap(status);
   const [editingId, setEditingId] = useState<string>();
   const canAddOutput = config.outputs.length < MAX_OUTPUTS;
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const previousOutputCount = useRef(config.outputs.length);
+
+  useEffect(() => {
+    if (config.outputs.length > previousOutputCount.current) {
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      });
+    }
+    previousOutputCount.current = config.outputs.length;
+  }, [config.outputs.length]);
 
   const updateInput = (endpoint: StreamEndpoint): void => {
     onChange({ ...config, input: endpoint });
@@ -87,7 +109,7 @@ export function EndpointTable({
     <Paper variant="outlined" sx={{ p: 1 }}>
       <Stack spacing={0.75}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" fontWeight={600} fontSize="0.8125rem">
             Endpoints
           </Typography>
           <Tooltip title="Export configuration">
@@ -109,6 +131,7 @@ export function EndpointTable({
             fontSize: "0.65rem"
           }}
         >
+          <span />
           <span>#</span>
           <span>Role</span>
           <span>Type</span>
@@ -125,6 +148,7 @@ export function EndpointTable({
           metric={statusMap[config.input.id]}
           onChange={updateInput}
           onConfigure={() => setEditingId(config.input.id)}
+          onShowLogs={() => onShowLogs(config.input.id)}
         />
 
         {config.outputs.map((output, index) => (
@@ -137,16 +161,24 @@ export function EndpointTable({
             onChange={(endpoint) => updateOutput(index, endpoint)}
             onConfigure={() => setEditingId(output.id)}
             onDelete={() => removeOutput(index)}
+            onShowLogs={() => onShowLogs(output.id)}
           />
         ))}
 
         {canAddOutput && (
           <Box>
-            <Button startIcon={<AddIcon />} onClick={addOutput} size="small">
+            <Button
+              startIcon={<AddIcon />}
+              onClick={addOutput}
+              size="small"
+              sx={{ fontSize: "0.75rem", py: 0.125 }}
+            >
               Add output
             </Button>
           </Box>
         )}
+
+        <div ref={bottomRef} />
       </Stack>
 
       {editingEndpoint != undefined && (
@@ -184,7 +216,8 @@ function EndpointRow({
   metric,
   onChange,
   onConfigure,
-  onDelete
+  onDelete,
+  onShowLogs
 }: {
   index: number;
   mode: StreamMode;
@@ -193,6 +226,7 @@ function EndpointRow({
   onChange: (endpoint: StreamEndpoint) => void;
   onConfigure: () => void;
   onDelete?: () => void;
+  onShowLogs: () => void;
 }) {
   const theme = useTheme();
   const types = allowedEndpointTypes(mode);
@@ -212,6 +246,9 @@ function EndpointRow({
         borderColor: "divider"
       }}
     >
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <CircleIcon sx={{ fontSize: 8, color: statusColor[metric.status as keyof typeof statusColor] }} />
+      </Box>
       <Box
         sx={{
           width: 18,
@@ -243,7 +280,9 @@ function EndpointRow({
             PaperProps: {
               sx: {
                 "& .MuiMenuItem-root": {
-                  fontSize: "0.7rem"
+                  minHeight: 28,
+                  fontSize: "0.7rem",
+                  py: 0.25
                 }
               }
             }
@@ -257,7 +296,7 @@ function EndpointRow({
         ))}
       </TextField>
       <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0, fontSize: "0.7rem" }}>
-        {endpointHost(endpoint)}
+        {endpointInfo(endpoint)}
       </Typography>
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
         {metric.bytes.toLocaleString()}
@@ -265,17 +304,21 @@ function EndpointRow({
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
         {metric.bps.toLocaleString()}
       </Typography>
-      <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
-        <CircleIcon sx={{ fontSize: 10, color: statusColor[metric.status as keyof typeof statusColor] }} />
+      <Stack direction="row" spacing={0.25} alignItems="center" justifyContent="flex-end">
         <Tooltip title="Configure">
-          <IconButton onClick={onConfigure} sx={{ p: 0.25 }}>
-            <SettingsIcon fontSize="small" />
+          <IconButton onClick={onConfigure} sx={endpointActionButtonSx}>
+            <SettingsIcon sx={endpointActionIconSx} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="View logs">
+          <IconButton onClick={onShowLogs} sx={endpointActionButtonSx}>
+            <ArticleIcon sx={endpointActionIconSx} />
           </IconButton>
         </Tooltip>
         {onDelete != undefined && (
           <Tooltip title="Delete output">
-            <IconButton onClick={onDelete} sx={{ p: 0.25 }}>
-              <DeleteIcon fontSize="small" />
+            <IconButton onClick={onDelete} sx={endpointActionButtonSx}>
+              <DeleteIcon sx={endpointActionIconSx} />
             </IconButton>
           </Tooltip>
         )}

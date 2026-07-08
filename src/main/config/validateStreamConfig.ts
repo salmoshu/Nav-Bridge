@@ -1,6 +1,7 @@
 import type {
   SerialParams,
   StreamConfig,
+  StreamEndpoint,
   TcpClientParams,
   TcpServerParams,
   UdpClientParams,
@@ -23,6 +24,7 @@ export function validateStreamConfig(config: StreamConfig): void {
   assertPositiveInteger(config.options.inactiveTimeout, "inactiveTimeout");
   validateEndpoint(config.input.id, config.input.type, config.input.params);
   config.outputs.forEach((output) => validateEndpoint(output.id, output.type, output.params));
+  validateServerPortConflicts(config.input, config.outputs);
 }
 
 function validateEndpoint(id: string, type: string, params: unknown): void {
@@ -55,6 +57,60 @@ function validateServerParams(params: TcpServerParams | UdpServerParams, type: s
   if (params.host != undefined) {
     assertNonEmpty(params.host, `${type}.host`);
   }
+}
+
+function validateServerPortConflicts(input: StreamEndpoint, outputs: StreamEndpoint[]): void {
+  const servers = [input, ...outputs.filter((output) => output.enabled)].filter(
+    (
+      endpoint
+    ): endpoint is StreamEndpoint & {
+      type: "tcp-server" | "udp-server";
+      params: TcpServerParams | UdpServerParams;
+    } => endpoint.type === "tcp-server" || endpoint.type === "udp-server"
+  );
+
+  const seen = new Map<string, string>();
+  for (const endpoint of servers) {
+    const port = endpoint.params.port;
+    const key = `${endpoint.type}:${port}`;
+    const existing = seen.get(key);
+    if (existing != undefined) {
+      throw new Error(
+        `${formatServerType(endpoint.type)} port ${port} is used by multiple enabled endpoints`
+      );
+    }
+    seen.set(key, endpoint.id);
+  }
+}
+
+function formatServerType(type: "tcp-server" | "udp-server"): string {
+  return type === "tcp-server" ? "TCP server" : "UDP server";
+}
+
+export function validateDuplicateClientEndpoints(input: StreamEndpoint, outputs: StreamEndpoint[]): void {
+  const clients = [input, ...outputs.filter((output) => output.enabled)].filter(
+    (
+      endpoint
+    ): endpoint is StreamEndpoint & {
+      type: "tcp-client" | "udp-client";
+      params: TcpClientParams | UdpClientParams;
+    } => endpoint.type === "tcp-client" || endpoint.type === "udp-client"
+  );
+
+  const seen = new Map<string, string>();
+  for (const endpoint of clients) {
+    const params = endpoint.params;
+    const key = `${endpoint.type}:${params.host}:${params.port}`;
+    const existing = seen.get(key);
+    if (existing != undefined) {
+      throw new Error(`Duplicate ${formatClientType(endpoint.type)} endpoint ${params.host}:${params.port}`);
+    }
+    seen.set(key, endpoint.id);
+  }
+}
+
+function formatClientType(type: "tcp-client" | "udp-client"): string {
+  return type === "tcp-client" ? "TCP client" : "UDP client";
 }
 
 function validateClientParams(params: TcpClientParams | UdpClientParams, type: string): void {

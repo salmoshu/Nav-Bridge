@@ -4,10 +4,12 @@ import { defaultStreamConfig, type StreamConfig } from "../shared/stream";
 import { AppTitleBar } from "./components/AppTitleBar";
 import { BottomActionBar } from "./components/BottomActionBar";
 import { EndpointTable } from "./components/EndpointTable";
-import { LogView } from "./components/LogView";
+import { LogDialog } from "./components/LogDialog";
 import { OptionsDialog } from "./components/OptionsDialog";
+import { WindowResizeHandles } from "./components/WindowResizeHandles";
 import { useNavBridgeAPI } from "./hooks/useNavBridgeAPI";
 import { useStreamStatus } from "./hooks/useStreamStatus";
+import { buildStatusMap } from "./lib/endpointStatus";
 import { createAppTheme } from "./theme";
 import { loadThemeMode, resolveThemeMode, saveThemeMode, type ThemeMode } from "./lib/themeMode";
 
@@ -19,9 +21,15 @@ export function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadThemeMode());
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [logEndpointId, setLogEndpointId] = useState<string>();
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = createAppTheme(resolveThemeMode(themeMode, prefersDark));
   const running = status?.running ?? false;
+  const statusMap = buildStatusMap(status);
+  const logEndpoint =
+    logEndpointId === config.input.id
+      ? config.input
+      : config.outputs.find((output) => output.id === logEndpointId);
 
   useEffect(() => {
     void api
@@ -62,8 +70,8 @@ export function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <WindowResizeHandles />
         <AppTitleBar
-          running={running}
           alwaysOnTop={alwaysOnTop}
           themeMode={themeMode}
           onThemeChange={setThemeMode}
@@ -84,9 +92,8 @@ export function App() {
                 status={status}
                 onChange={setConfig}
                 onExport={() => void api.exportConfig(config)}
+                onShowLogs={setLogEndpointId}
               />
-
-              <LogView logs={logs} />
             </Stack>
           </Container>
         </Box>
@@ -104,6 +111,13 @@ export function App() {
         options={config.options}
         onClose={() => setOptionsOpen(false)}
         onSave={handleOptionsSave}
+      />
+      <LogDialog
+        open={logEndpointId != undefined}
+        endpoint={logEndpoint}
+        metric={logEndpointId != undefined ? statusMap[logEndpointId] : undefined}
+        logs={logs}
+        onClose={() => setLogEndpointId(undefined)}
       />
     </ThemeProvider>
   );

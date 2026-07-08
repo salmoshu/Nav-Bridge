@@ -2,15 +2,16 @@ import CloseIcon from "@mui/icons-material/Close";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import { useNavBridgeAPI } from "../hooks/useNavBridgeAPI";
 import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
 import { ThemeModeSelector } from "./ThemeModeSelector";
 
-const LOGO_BLUE = "#2196f3";
-
 function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
+  const theme = useTheme();
+  const logoBlue = theme.palette.primary.main;
+
   return (
     <Box
       component="svg"
@@ -18,13 +19,13 @@ function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={LOGO_BLUE}
+      stroke={logoBlue}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="3" fill={LOGO_BLUE} stroke="none" />
+      <circle cx="12" cy="12" r="3" fill={logoBlue} stroke="none" />
       <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" />
       <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
       <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
@@ -66,18 +67,14 @@ export function AppTitleBar({
     >
       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
         <ElectronLogoPlaceholder />
-        <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
-          Nav-Bridge
-        </Typography>
-        <Typography
-          component="span"
-          variant="caption"
-          color="text.secondary"
-          fontSize="0.6875rem"
-          sx={{ lineHeight: 1, pt: "1px" }}
-        >
-          v{__APP_VERSION__}
-        </Typography>
+        <Box sx={{ display: "inline-flex", alignItems: "baseline", gap: 0.5 }}>
+          <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
+            Nav-Bridge
+          </Typography>
+          <Typography component="span" variant="caption" color="text.secondary" fontSize="0.6875rem">
+            v{__APP_VERSION__}
+          </Typography>
+        </Box>
       </Stack>
 
       <Stack
