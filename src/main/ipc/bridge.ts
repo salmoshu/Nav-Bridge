@@ -14,6 +14,7 @@ export class IpcBridge {
   private server?: StreamServer;
   private lifecycle = Promise.resolve();
   private dragInterval?: NodeJS.Timeout;
+  private wasResizableBeforeDrag = true;
 
   public constructor(
     private readonly window: BrowserWindow,
@@ -109,6 +110,10 @@ export class IpcBridge {
 
     ipcMain.handle(ipcChannels.startWindowDrag, (_event, offsetX: number, offsetY: number) => {
       if (this.dragInterval != undefined) return;
+      // Disable resizing while dragging from the header so that clicking near the
+      // window edge does not trigger an unintended resize.
+      this.wasResizableBeforeDrag = this.window.isResizable();
+      this.window.setResizable(false);
       const initialBounds = this.window.getBounds();
       const initialCursor = screen.getCursorScreenPoint();
       this.dragInterval = setInterval(() => {
@@ -125,6 +130,7 @@ export class IpcBridge {
         clearInterval(this.dragInterval);
         this.dragInterval = undefined;
       }
+      this.window.setResizable(this.wasResizableBeforeDrag);
     });
   }
 
