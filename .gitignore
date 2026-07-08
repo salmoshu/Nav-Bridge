@@ -7,7 +7,6 @@ node_modules/
 yarn-error.log*
 npm-debug.log*
 pnpm-debug.log*
-yarn.lock
 .pnpm-lock.yaml
 
 # Yarn Berry (if used)
@@ -79,6 +78,9 @@ installer/
 tmp/
 .temp/
 .cache/
+
+# Brainstorming visual companion artifacts
+.superpowers/
 
 # Native module build artifacts
 prebuilds/
