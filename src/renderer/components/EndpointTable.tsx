@@ -6,7 +6,6 @@ import CircleIcon from "@mui/icons-material/Circle";
 import {
   Box,
   Button,
-  Checkbox,
   IconButton,
   MenuItem,
   Paper,
@@ -35,7 +34,8 @@ const statusColor = {
   error: "#ff6b6b"
 } as const;
 
-const endpointGridColumns = "24px 28px 96px minmax(0, 1fr) 48px 48px 56px";
+const MAX_OUTPUTS = 7;
+const endpointGridColumns = "28px 96px minmax(0, 1fr) 48px 48px 56px";
 
 export function EndpointTable({
   config,
@@ -51,6 +51,7 @@ export function EndpointTable({
   const { ports, loading: serialPortsLoading, error: serialPortsError, refresh } = useSerialPorts();
   const statusMap = buildStatusMap(status);
   const [editingId, setEditingId] = useState<string>();
+  const canAddOutput = config.outputs.length < MAX_OUTPUTS;
 
   const updateInput = (endpoint: StreamEndpoint): void => {
     onChange({ ...config, input: endpoint });
@@ -63,6 +64,7 @@ export function EndpointTable({
   };
 
   const addOutput = (): void => {
+    if (!canAddOutput) return;
     const nextIndex = config.outputs.length + 1;
     onChange({
       ...config,
@@ -106,7 +108,6 @@ export function EndpointTable({
             fontSize: "0.65rem"
           }}
         >
-          <span />
           <span>#</span>
           <span>Type</span>
           <span>Info</span>
@@ -137,11 +138,13 @@ export function EndpointTable({
           />
         ))}
 
-        <Box>
-          <Button startIcon={<AddIcon />} onClick={addOutput} size="small">
-            Add output
-          </Button>
-        </Box>
+        {canAddOutput && (
+          <Box>
+            <Button startIcon={<AddIcon />} onClick={addOutput} size="small">
+              Add output
+            </Button>
+          </Box>
+        )}
       </Stack>
 
       {editingEndpoint != undefined && (
@@ -207,12 +210,6 @@ function EndpointRow({
         borderColor: "divider"
       }}
     >
-      <Checkbox
-        checked={endpoint.enabled}
-        onChange={(event) => onChange({ ...endpoint, enabled: event.target.checked })}
-        size="small"
-        sx={{ p: 0.25 }}
-      />
       <Box
         sx={{
           width: 18,
@@ -234,6 +231,18 @@ function EndpointRow({
         value={endpoint.type}
         onChange={(event) => onChange(createEndpointWithType(endpoint, event.target.value as StreamType))}
         sx={{ minWidth: 0 }}
+        SelectProps={{
+          sx: { fontSize: "0.7rem" },
+          MenuProps: {
+            PaperProps: {
+              sx: {
+                "& .MuiMenuItem-root": {
+                  fontSize: "0.7rem"
+                }
+              }
+            }
+          }
+        }}
       >
         {types.map((type) => (
           <MenuItem key={type} value={type}>
