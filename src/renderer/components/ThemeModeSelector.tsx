@@ -11,7 +11,9 @@ export const themeModeMenuProps = {
     "data-theme-mode-menu": true,
     sx: {
       WebkitAppRegion: "no-drag",
+      cursor: "pointer",
       "& .MuiMenuItem-root": {
+        cursor: "pointer",
         minHeight: 28,
         py: 0.25
       }

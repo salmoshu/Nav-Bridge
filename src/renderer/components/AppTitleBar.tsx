@@ -8,6 +8,8 @@ import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
 import { ThemeModeSelector } from "./ThemeModeSelector";
 
+const LOGO_BLUE = "#2196f3";
+
 function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
   return (
     <Box
@@ -16,21 +18,16 @@ function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
+      stroke={LOGO_BLUE}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#42a5f5" />
-          <stop offset="100%" stopColor="#ab47bc" />
-        </linearGradient>
-      </defs>
-      <circle cx="12" cy="12" r="3" fill="url(#logoGradient)" stroke="none" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" stroke="url(#logoGradient)" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" stroke="#66bb6a" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" stroke="#ffa726" />
+      <circle cx="12" cy="12" r="3" fill={LOGO_BLUE} stroke="none" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
     </Box>
   );
 }
@@ -62,31 +59,25 @@ export function AppTitleBar({
         gap: 1,
         bgcolor: "background.paper",
         borderBottom: 1,
-        borderColor: "divider"
+        borderColor: "divider",
+        WebkitAppRegion: "drag",
+        appRegion: "drag"
       }}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        sx={{
-          minWidth: 0,
-          // Only the title/logo area is a native drag region so that clicks on
-          // the rest of the header are handled by the browser (e.g. closing an
-          // open theme dropdown).
-          WebkitAppRegion: "drag",
-          appRegion: "drag"
-        }}
-      >
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
         <ElectronLogoPlaceholder />
         <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
           Nav-Bridge
         </Typography>
-        <Box sx={{ display: "inline-flex", alignItems: "center" }}>
-          <Typography variant="caption" color="text.secondary" noWrap fontSize="0.6875rem" lineHeight={1}>
-            v{__APP_VERSION__}
-          </Typography>
-        </Box>
+        <Typography
+          component="span"
+          variant="caption"
+          color="text.secondary"
+          fontSize="0.6875rem"
+          sx={{ lineHeight: 1, pt: "1px" }}
+        >
+          v{__APP_VERSION__}
+        </Typography>
       </Stack>
 
       <Stack
