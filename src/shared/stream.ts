@@ -10,6 +10,7 @@ export interface TcpServerParams {
 export interface TcpClientParams {
   host: string;
   port: number;
+  connectMessage?: string;
 }
 
 export interface UdpServerParams {
@@ -82,6 +83,14 @@ export interface LogEntry {
   time: string;
   level: "info" | "warn" | "error";
   message: string;
+}
+
+export interface StreamDataEntry {
+  time: string;
+  endpointId: string;
+  direction: "input" | "output";
+  bytes: number;
+  preview: string;
 }
 
 export const defaultStreamConfig: StreamConfig = {

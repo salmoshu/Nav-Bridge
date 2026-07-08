@@ -118,4 +118,21 @@ describe("validateStreamConfig", () => {
       })
     ).not.toThrow();
   });
+
+  it("ignores disabled outputs with legacy invalid endpoint types", () => {
+    expect(() =>
+      validateStreamConfig({
+        ...defaultStreamConfig,
+        outputs: [
+          defaultStreamConfig.outputs[0],
+          {
+            id: "legacy-blank-output",
+            type: "",
+            enabled: false,
+            params: {}
+          } as never
+        ]
+      })
+    ).not.toThrow();
+  });
 });

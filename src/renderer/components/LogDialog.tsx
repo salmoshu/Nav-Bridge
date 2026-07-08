@@ -20,6 +20,8 @@ const levelColors: Record<LogEntry["level"], string> = {
   error: "error.main"
 };
 
+const metricChipSx = { borderRadius: 1 } as const;
+
 function statusColor(status: string): "default" | "success" | "warning" | "error" {
   switch (status) {
     case "connected":
@@ -65,7 +67,7 @@ export function LogDialog({
       <DialogTitle sx={{ py: 1, pr: 5, fontSize: "0.875rem", fontWeight: 700 }}>
         <Stack direction="row" spacing={0.75} alignItems="center">
           {endpoint != undefined && (
-            <Chip size="small" label={formatEndpointType(endpoint.type)} variant="outlined" />
+            <Chip size="small" label={formatEndpointType(endpoint.type)} variant="outlined" sx={metricChipSx} />
           )}
           <span>{formatLogDialogTitle(endpoint)}</span>
         </Stack>
@@ -79,17 +81,28 @@ export function LogDialog({
       </DialogTitle>
       <DialogContent sx={{ pt: 1, pb: 1.5 }}>
         <Stack spacing={1}>
-          <Paper variant="outlined" sx={{ p: 1 }}>
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-              <Chip
-                size="small"
-                label={`Status: ${metric?.status ?? "idle"}`}
-                color={statusColor(metric?.status ?? "idle")}
-              />
-              <Chip size="small" label={`Bytes: ${(metric?.bytes ?? 0).toLocaleString()}`} />
-              <Chip size="small" label={`BPS: ${(metric?.bps ?? 0).toLocaleString()}`} />
-            </Stack>
-          </Paper>
+          {endpoint != undefined && (
+            <Paper variant="outlined" sx={{ p: 1 }}>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                <Chip
+                  size="small"
+                  label={`Status: ${metric?.status ?? "idle"}`}
+                  color={statusColor(metric?.status ?? "idle")}
+                  sx={metricChipSx}
+                />
+                <Chip
+                  size="small"
+                  label={`Bytes: ${(metric?.bytes ?? 0).toLocaleString()}`}
+                  sx={metricChipSx}
+                />
+                <Chip
+                  size="small"
+                  label={`BPS: ${(metric?.bps ?? 0).toLocaleString()}`}
+                  sx={metricChipSx}
+                />
+              </Stack>
+            </Paper>
+          )}
 
           <Paper
             variant="outlined"

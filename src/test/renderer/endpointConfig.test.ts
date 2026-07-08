@@ -1,12 +1,15 @@
 import {
   allowedEndpointTypes,
+  createDefaultEndpoint,
   defaultParamsForType,
   endpointHost,
   endpointInfo,
   endpointSummary,
   formatEndpointType,
-  formatLogDialogTitle
+  formatLogDialogTitle,
+  formatSerialPortLabel
 } from "../../renderer/lib/endpointConfig";
+import type { SerialPortInfo } from "../../shared/ipc";
 import type { StreamEndpoint } from "../../shared/stream";
 
 describe("endpointSummary", () => {
@@ -24,7 +27,7 @@ describe("endpointSummary", () => {
         flowControl: "none"
       }
     };
-    expect(endpointSummary(endpoint)).toBe("Serial COM3 @ 115200");
+    expect(endpointSummary(endpoint)).toBe("Serial COM3@115200");
   });
 
   it("summarises a TCP server endpoint with host and port", () => {
@@ -119,7 +122,7 @@ describe("endpointInfo", () => {
         flowControl: "none"
       }
     };
-    expect(endpointInfo(serial)).toBe("COM3 @ 115200");
+    expect(endpointInfo(serial)).toBe("COM3@115200");
   });
 });
 
@@ -150,7 +153,7 @@ describe("formatLogDialogTitle", () => {
 describe("defaultParamsForType", () => {
   it("returns serial defaults", () => {
     expect(defaultParamsForType("serial")).toEqual({
-      port: "COM3",
+      port: "",
       baudRate: 115200,
       dataBits: 8,
       parity: "none",
@@ -174,6 +177,15 @@ describe("defaultParamsForType", () => {
   it("returns UDP client defaults", () => {
     expect(defaultParamsForType("udp-client")).toEqual({ host: "127.0.0.1", port: 2201 });
   });
+
+});
+
+describe("createDefaultEndpoint", () => {
+  it("creates an enabled endpoint for a concrete type", () => {
+    const endpoint = createDefaultEndpoint("output-2", "tcp-client");
+    expect(endpoint.type).toBe("tcp-client");
+    expect(endpoint.enabled).toBe(true);
+  });
 });
 
 describe("allowedEndpointTypes", () => {
@@ -185,6 +197,27 @@ describe("allowedEndpointTypes", () => {
   it("excludes udp-server for output mode", () => {
     expect(allowedEndpointTypes("output")).not.toContain("udp-server");
     expect(allowedEndpointTypes("output")).toContain("udp-client");
+  });
+});
+
+describe("formatSerialPortLabel", () => {
+  it("returns the port path when no extra metadata is present", () => {
+    const port: SerialPortInfo = { path: "COM3" };
+    expect(formatSerialPortLabel(port)).toBe("COM3");
+  });
+
+  it("combines path, manufacturer and serialNumber in order", () => {
+    const port: SerialPortInfo = {
+      path: "COM3",
+      manufacturer: "FTDI",
+      serialNumber: "ABC123"
+    };
+    expect(formatSerialPortLabel(port)).toBe("COM3 - FTDI - ABC123");
+  });
+
+  it("skips missing manufacturer and serialNumber", () => {
+    const port: SerialPortInfo = { path: "/dev/ttyUSB0", serialNumber: "XYZ" };
+    expect(formatSerialPortLabel(port)).toBe("/dev/ttyUSB0 - XYZ");
   });
 });
 

@@ -21,4 +21,8 @@ describe("ipcChannels", () => {
     expect(ipcChannels.toggleAlwaysOnTop).toBe("nav-bridge:window-toggle-always-on-top");
     expect(ipcChannels.windowAlwaysOnTop).toBe("nav-bridge:window-always-on-top");
   });
+
+  it("includes the per-endpoint data stream channel", () => {
+    expect(ipcChannels.data).toBe("nav-bridge:data");
+  });
 });

@@ -110,6 +110,9 @@ export class TcpAdapter implements StreamAdapter {
       socket.once("connect", resolve);
       socket.once("error", reject);
     });
+    if (params.connectMessage != undefined && params.connectMessage.length > 0) {
+      await this.write(decodeEscapeSequences(params.connectMessage));
+    }
   }
 
   private attachSocket(socket: net.Socket): void {
@@ -128,4 +131,13 @@ export class TcpAdapter implements StreamAdapter {
     this.error = error.message;
     this.status = "error";
   }
+}
+
+function decodeEscapeSequences(value: string): Buffer {
+  const decoded = value
+    .replace(/\\r/g, "\r")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\/g, "\\");
+  return Buffer.from(decoded, "utf-8");
 }

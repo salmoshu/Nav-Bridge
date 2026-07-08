@@ -29,18 +29,19 @@ export class QueuedReads {
     }
 
     return await new Promise<Buffer | undefined>((resolve) => {
+      const waiter = (next: Buffer | undefined): void => {
+        clearTimeout(timer);
+        resolve(next);
+      };
       const timer = setTimeout(() => {
-        const index = this.waiters.indexOf(resolve);
+        const index = this.waiters.indexOf(waiter);
         if (index >= 0) {
           this.waiters.splice(index, 1);
         }
         resolve(undefined);
       }, timeoutMs);
 
-      this.waiters.push((next) => {
-        clearTimeout(timer);
-        resolve(next);
-      });
+      this.waiters.push(waiter);
     });
   }
 

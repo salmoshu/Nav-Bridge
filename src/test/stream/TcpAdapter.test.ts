@@ -43,4 +43,26 @@ describe("TcpAdapter", () => {
     await output.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
+
+  it("sends connectMessage after TCP client connection", async () => {
+    const server = net.createServer();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (typeof address === "string" || address == undefined) {
+      throw new Error("Expected TCP address object");
+    }
+    const received = new Promise<Buffer>((resolve) => {
+      server.once("connection", (socket) => socket.once("data", resolve));
+    });
+
+    const output = new TcpAdapter("tcp-output", "output", {
+      type: "tcp-client",
+      params: { host: "127.0.0.1", port: address.port, connectMessage: "GET / HTTP/1.0\\r\\n\\r\\n" }
+    });
+    await output.open();
+
+    await expect(received).resolves.toEqual(Buffer.from("GET / HTTP/1.0\r\n\r\n"));
+    await output.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
 });

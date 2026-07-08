@@ -23,7 +23,9 @@ export function validateStreamConfig(config: StreamConfig): void {
   assertPositiveInteger(config.options.reconnectInterval, "reconnectInterval");
   assertPositiveInteger(config.options.inactiveTimeout, "inactiveTimeout");
   validateEndpoint(config.input.id, config.input.type, config.input.params);
-  config.outputs.forEach((output) => validateEndpoint(output.id, output.type, output.params));
+  config.outputs
+    .filter((output) => output.enabled)
+    .forEach((output) => validateEndpoint(output.id, output.type, output.params));
   validateServerPortConflicts(config.input, config.outputs);
 }
 

@@ -23,7 +23,7 @@ describe("AppTitleBar", () => {
   });
 
   it("uses icon color only for the active always-on-top state without a circular background", () => {
-    expect(source).toContain('isAlwaysOnTop && alwaysOnTop ? "common.black" : "text.primary"');
+    expect(source).toContain('theme.palette.mode === "dark" ? "common.white" : "common.black"');
     expect(source).not.toContain('bgcolor: isAlwaysOnTop && alwaysOnTop ? "action.selected"');
     expect(source).toContain('bgcolor: "transparent"');
   });

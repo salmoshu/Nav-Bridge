@@ -1,9 +1,11 @@
-import { Alert, Box, Container, CssBaseline, Stack, ThemeProvider, useMediaQuery } from "@mui/material";
-import { useEffect, useState } from "react";
+import { Box, Container, CssBaseline, Stack, ThemeProvider, useMediaQuery } from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
 import { defaultStreamConfig, type StreamConfig } from "../shared/stream";
 import { AppTitleBar } from "./components/AppTitleBar";
 import { BottomActionBar } from "./components/BottomActionBar";
+import { DataDialog } from "./components/DataDialog";
 import { EndpointTable } from "./components/EndpointTable";
+import { ErrorAlert } from "./components/ErrorAlert";
 import { LogDialog } from "./components/LogDialog";
 import { OptionsDialog } from "./components/OptionsDialog";
 import { WindowResizeHandles } from "./components/WindowResizeHandles";
@@ -13,25 +15,50 @@ import { buildStatusMap } from "./lib/endpointStatus";
 import { createAppTheme } from "./theme";
 import { loadThemeMode, resolveThemeMode, saveThemeMode, type ThemeMode } from "./lib/themeMode";
 
+const CONFIG_STORAGE_KEY = "nav-bridge:config";
+
+function loadStoredConfig(): StreamConfig | undefined {
+  try {
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (raw != undefined) {
+      const parsed = JSON.parse(raw) as StreamConfig;
+      if (parsed.version === defaultStreamConfig.version) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore corrupt storage
+  }
+  return undefined;
+}
+
 export function App() {
   const api = useNavBridgeAPI();
-  const { status, logs } = useStreamStatus();
-  const [config, setConfig] = useState<StreamConfig>(defaultStreamConfig);
+  const { status, logs, dataEntries } = useStreamStatus();
+  const [config, setConfig] = useState<StreamConfig>(() => loadStoredConfig() ?? defaultStreamConfig);
   const [error, setError] = useState<string>();
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadThemeMode());
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [logEndpointId, setLogEndpointId] = useState<string>();
+  const [systemLogsOpen, setSystemLogsOpen] = useState(false);
+  const [dataEndpointId, setDataEndpointId] = useState<string>();
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = createAppTheme(resolveThemeMode(themeMode, prefersDark));
   const running = status?.running ?? false;
   const statusMap = buildStatusMap(status);
-  const logEndpoint =
-    logEndpointId === config.input.id
+  const dataEndpoint =
+    dataEndpointId === config.input.id
       ? config.input
-      : config.outputs.find((output) => output.id === logEndpointId);
+      : config.outputs.find((output) => output.id === dataEndpointId);
+  const endpointDataEntries =
+    dataEndpointId == undefined ? [] : dataEntries.filter((entry) => entry.endpointId === dataEndpointId);
+  const clearError = useCallback((): void => setError(undefined), []);
 
   useEffect(() => {
+    // Only fall back to the main-process store if there is no localStorage copy.
+    if (loadStoredConfig() != undefined) {
+      return;
+    }
     void api
       .loadConfig()
       .then(setConfig)
@@ -47,6 +74,11 @@ export function App() {
   }, [api]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+    } catch {
+      // ignore storage errors (e.g. private mode)
+    }
     void api.saveConfig(config).catch((saveError: unknown) => setError(String(saveError)));
   }, [api, config]);
 
@@ -81,18 +113,15 @@ export function App() {
         <Box sx={{ flex: 1, overflow: "auto" }}>
           <Container maxWidth={false} sx={{ py: 1, px: 1.5 }}>
             <Stack spacing={1}>
-              {error != undefined && (
-                <Alert severity="error" sx={{ py: 0.25, fontSize: "0.75rem" }}>
-                  {error}
-                </Alert>
-              )}
+              {error != undefined && <ErrorAlert message={error} onClose={clearError} />}
 
               <EndpointTable
                 config={config}
                 status={status}
                 onChange={setConfig}
                 onExport={() => void api.exportConfig(config)}
-                onShowLogs={setLogEndpointId}
+                onShowSystemLogs={() => setSystemLogsOpen(true)}
+                onShowData={setDataEndpointId}
               />
             </Stack>
           </Container>
@@ -112,12 +141,13 @@ export function App() {
         onClose={() => setOptionsOpen(false)}
         onSave={handleOptionsSave}
       />
-      <LogDialog
-        open={logEndpointId != undefined}
-        endpoint={logEndpoint}
-        metric={logEndpointId != undefined ? statusMap[logEndpointId] : undefined}
-        logs={logs}
-        onClose={() => setLogEndpointId(undefined)}
+      <LogDialog open={systemLogsOpen} logs={logs} onClose={() => setSystemLogsOpen(false)} />
+      <DataDialog
+        open={dataEndpointId != undefined}
+        endpoint={dataEndpoint}
+        metric={dataEndpointId != undefined ? statusMap[dataEndpointId] : undefined}
+        entries={endpointDataEntries}
+        onClose={() => setDataEndpointId(undefined)}
       />
     </ThemeProvider>
   );

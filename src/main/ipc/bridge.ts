@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import { SerialPort } from "serialport";
 import type { SerialPortInfo, StartServerResult, WindowResizeEdge } from "../../shared/ipc";
 import { ipcChannels } from "../../shared/ipc";
-import type { LogEntry, StreamConfig } from "../../shared/stream";
+import type { ConnectionStatus, LogEntry, StreamConfig, StreamDataEntry, StreamStatus } from "../../shared/stream";
 import { ConfigStore } from "../config/ConfigStore";
 import { validateDuplicateClientEndpoints, validateStreamConfig } from "../config/validateStreamConfig";
 import { StreamServer } from "../stream/StreamServer";
@@ -15,6 +15,10 @@ export class IpcBridge {
   private server?: StreamServer;
   private lifecycle = Promise.resolve();
   private resizeInterval?: NodeJS.Timeout;
+  private lastInputStatus: ConnectionStatus = "idle";
+  private inputHost?: string;
+  private inputPort?: number;
+  private firstDataLogged = false;
 
   public constructor(
     private readonly window: BrowserWindow,
@@ -42,7 +46,8 @@ export class IpcBridge {
           validateDuplicateClientEndpoints(config.input, config.outputs);
           await this.server?.stop();
           this.server = this.createServer(config);
-          this.server.onStatus((status) => this.window.webContents.send(ipcChannels.status, status));
+          this.server.onStatus((status) => this.handleStatus(status));
+          this.server.onData((entry) => this.sendData(entry));
           await this.server.start();
           this.log("info", "Stream server started");
           return { success: true };
@@ -64,12 +69,10 @@ export class IpcBridge {
 
     ipcMain.handle(ipcChannels.loadConfig, () => this.configStore.load());
     ipcMain.handle(ipcChannels.saveConfig, (_event, config: StreamConfig) => {
-      validateStreamConfig(config);
       this.configStore.save(config);
     });
 
     ipcMain.handle(ipcChannels.exportConfig, async (_event, config: StreamConfig) => {
-      validateStreamConfig(config);
       const timestamp = new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
       const result = await dialog.showSaveDialog(this.window, {
         defaultPath: `nav-bridge-config-${timestamp}.json`,
@@ -165,6 +168,16 @@ export class IpcBridge {
     const outputs = config.outputs
       .filter((output) => output.enabled)
       .map((output) => createAdapter(output, "output"));
+    this.inputHost =
+      config.input.type === "tcp-client" || config.input.type === "udp-client"
+        ? (config.input.params as { host: string }).host
+        : undefined;
+    this.inputPort =
+      config.input.type === "tcp-client" || config.input.type === "udp-client"
+        ? (config.input.params as { port: number }).port
+        : undefined;
+    this.lastInputStatus = "idle";
+    this.firstDataLogged = false;
     return new StreamServer(createAdapter(config.input, "input"), outputs, {
       bufferSize: config.options.bufferSize,
       statusInterval: config.options.statusInterval
@@ -180,5 +193,31 @@ export class IpcBridge {
       message,
       time: new Date().toISOString()
     } satisfies LogEntry);
+  }
+
+  private handleStatus(status: StreamStatus): void {
+    if (this.window.webContents.isDestroyed()) {
+      return;
+    }
+    if (status.input.status === "connected" && this.lastInputStatus !== "connected") {
+      const address =
+        this.inputHost != undefined && this.inputPort != undefined
+          ? `${this.inputHost}:${this.inputPort}`
+          : status.input.id;
+      this.log("info", `Input connected (${address})`);
+    }
+    this.lastInputStatus = status.input.status;
+    this.window.webContents.send(ipcChannels.status, status);
+  }
+
+  private sendData(entry: StreamDataEntry): void {
+    if (!this.firstDataLogged && entry.direction === "input") {
+      this.firstDataLogged = true;
+      this.log("info", `First data from ${entry.endpointId}: ${entry.bytes} bytes`);
+    }
+    if (this.window.webContents.isDestroyed()) {
+      return;
+    }
+    this.window.webContents.send(ipcChannels.data, entry);
   }
 }

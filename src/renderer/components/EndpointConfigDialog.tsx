@@ -1,5 +1,4 @@
 import {
-  Autocomplete,
   Button,
   Dialog,
   DialogActions,
@@ -21,6 +20,7 @@ import {
   dataBitsOptions,
   flowControlOptions,
   formatEndpointType,
+  formatSerialPortLabel,
   isNetworkEndpoint,
   isSerialEndpoint,
   parityOptions,
@@ -56,10 +56,18 @@ export function EndpointConfigDialog({
   onSave: (endpoint: StreamEndpoint) => void;
 }) {
   const [draft, setDraft] = useState<StreamEndpoint>(endpoint);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     setDraft(endpoint);
+    setShowAdvanced(false);
   }, [endpoint, open]);
+
+  useEffect(() => {
+    if (open) {
+      void onRefreshSerialPorts?.();
+    }
+  }, [onRefreshSerialPorts, open]);
 
   const types = allowedEndpointTypes(mode);
   const params = draft.params as unknown as Record<string, unknown>;
@@ -73,12 +81,10 @@ export function EndpointConfigDialog({
     setDraft(createEndpointWithType(draft, type));
   };
 
-  const serialPortPaths = serialPorts.map((port) => port.path);
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={compactDialogTitleSx}>
-        {mode === "input" ? "Configure Input" : `Configure ${endpoint.id}`}
+        {mode === "input" ? "Configure Input" : "Configure Output"}
       </DialogTitle>
       <DialogContent sx={compactDialogContentSx}>
         <Stack spacing={1.25}>
@@ -101,17 +107,6 @@ export function EndpointConfigDialog({
             ))}
           </TextField>
 
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={draft.enabled}
-                onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })}
-              />
-            }
-            label="Enabled"
-          />
-
           {isNetworkEndpoint(draft) && (
             <Stack direction="row" spacing={1}>
               <TextField
@@ -130,115 +125,131 @@ export function EndpointConfigDialog({
             </Stack>
           )}
 
+          {draft.type === "tcp-client" && (
+            <TextField
+              label="Connect message (optional)"
+              multiline
+              minRows={2}
+              maxRows={4}
+              fullWidth
+              value={String(params.connectMessage ?? "")}
+              onChange={(event) => updateParam("connectMessage", event.target.value)}
+              helperText="Sent once after TCP connection. Use \\r \\n for CRLF."
+              InputLabelProps={{ shrink: true }}
+            />
+          )}
+
           {isSerialEndpoint(draft) && (
             <>
-              <Stack direction="row" spacing={1} alignItems="flex-start">
-                <Autocomplete
-                  freeSolo
-                  fullWidth
-                  loading={serialPortsLoading}
-                  options={serialPortPaths}
-                  value={serialParams.port}
-                  onChange={(_event, value) => updateParam("port", value ?? "")}
-                  onInputChange={(_event, value) => updateParam("port", value)}
-                  renderInput={(inputParams) => (
-                    <TextField
-                      {...inputParams}
-                      label="Serial port"
-                      placeholder="COM3"
-                      error={serialPortsError != undefined}
-                      helperText={
-                        serialPortsError ??
-                        (serialPortPaths.length === 0
-                          ? "No serial ports detected. Type a port name manually."
-                          : undefined)
-                      }
-                    />
-                  )}
-                />
-                {onRefreshSerialPorts != undefined && (
-                  <Button
-                    onClick={() => void onRefreshSerialPorts()}
-                    disabled={serialPortsLoading}
+              <TextField
+                select
+                label="Serial port"
+                fullWidth
+                value={serialParams.port ?? ""}
+                onChange={(event) => updateParam("port", event.target.value)}
+                error={serialPortsError != undefined}
+                helperText={
+                  serialPortsError ??
+                  (serialPorts.length === 0 ? "No serial ports detected." : undefined)
+                }
+                disabled={serialPortsLoading}
+                SelectProps={{
+                  MenuProps: denseSelectMenuProps,
+                  onOpen: () => void onRefreshSerialPorts?.()
+                }}
+                InputLabelProps={{ shrink: true }}
+              >
+                {serialPorts.map((port) => (
+                  <MenuItem key={port.path} value={port.path}>
+                    {formatSerialPortLabel(port)}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Baud"
+                fullWidth
+                value={serialParams.baudRate}
+                onChange={(event) => updateParam("baudRate", Number(event.target.value))}
+                SelectProps={{ MenuProps: denseSelectMenuProps }}
+                InputLabelProps={{ shrink: true }}
+              >
+                {baudRates.map((rate) => (
+                  <MenuItem key={rate} value={rate}>
+                    {rate}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <FormControlLabel
+                control={
+                  <Switch
                     size="small"
-                    sx={compactDialogButtonSx}
+                    checked={showAdvanced}
+                    onChange={(event) => setShowAdvanced(event.target.checked)}
+                  />
+                }
+                label="Advanced"
+              />
+              {showAdvanced && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ rowGap: 1 }}>
+                  <TextField
+                    select
+                    label="Data bits"
+                    value={serialParams.dataBits}
+                    onChange={(event) => updateParam("dataBits", Number(event.target.value))}
+                    sx={{ minWidth: 100 }}
+                    SelectProps={{ MenuProps: denseSelectMenuProps }}
                   >
-                    Refresh
-                  </Button>
-                )}
-              </Stack>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <TextField
-                  select
-                  label="Baud"
-                  value={serialParams.baudRate}
-                  onChange={(event) => updateParam("baudRate", Number(event.target.value))}
-                  sx={{ minWidth: 100 }}
-                  SelectProps={{ MenuProps: denseSelectMenuProps }}
-                >
-                  {baudRates.map((rate) => (
-                    <MenuItem key={rate} value={rate}>
-                      {rate}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Data bits"
-                  value={serialParams.dataBits}
-                  onChange={(event) => updateParam("dataBits", Number(event.target.value))}
-                  sx={{ minWidth: 90 }}
-                  SelectProps={{ MenuProps: denseSelectMenuProps }}
-                >
-                  {dataBitsOptions.map((bits) => (
-                    <MenuItem key={bits} value={bits}>
-                      {bits}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Parity"
-                  value={serialParams.parity}
-                  onChange={(event) => updateParam("parity", event.target.value)}
-                  sx={{ minWidth: 100 }}
-                  SelectProps={{ MenuProps: denseSelectMenuProps }}
-                >
-                  {parityOptions.map((parity) => (
-                    <MenuItem key={parity} value={parity}>
-                      {parity}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Stop bits"
-                  value={serialParams.stopBits}
-                  onChange={(event) => updateParam("stopBits", Number(event.target.value))}
-                  sx={{ minWidth: 90 }}
-                  SelectProps={{ MenuProps: denseSelectMenuProps }}
-                >
-                  {stopBitsOptions.map((bits) => (
-                    <MenuItem key={bits} value={bits}>
-                      {bits}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Flow"
-                  value={serialParams.flowControl}
-                  onChange={(event) => updateParam("flowControl", event.target.value)}
-                  sx={{ minWidth: 110 }}
-                  SelectProps={{ MenuProps: denseSelectMenuProps }}
-                >
-                  {flowControlOptions.map((flow) => (
-                    <MenuItem key={flow} value={flow}>
-                      {flow}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
+                    {dataBitsOptions.map((bits) => (
+                      <MenuItem key={bits} value={bits}>
+                        {bits}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Parity"
+                    value={serialParams.parity}
+                    onChange={(event) => updateParam("parity", event.target.value)}
+                    sx={{ minWidth: 100 }}
+                    SelectProps={{ MenuProps: denseSelectMenuProps }}
+                  >
+                    {parityOptions.map((parity) => (
+                      <MenuItem key={parity} value={parity}>
+                        {parity}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Stop bits"
+                    value={serialParams.stopBits}
+                    onChange={(event) => updateParam("stopBits", Number(event.target.value))}
+                    sx={{ minWidth: 100 }}
+                    SelectProps={{ MenuProps: denseSelectMenuProps }}
+                  >
+                    {stopBitsOptions.map((bits) => (
+                      <MenuItem key={bits} value={bits}>
+                        {bits}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Flow"
+                    value={serialParams.flowControl}
+                    onChange={(event) => updateParam("flowControl", event.target.value)}
+                    sx={{ minWidth: 100 }}
+                    SelectProps={{ MenuProps: denseSelectMenuProps }}
+                  >
+                    {flowControlOptions.map((flow) => (
+                      <MenuItem key={flow} value={flow}>
+                        {flow}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              )}
             </>
           )}
         </Stack>

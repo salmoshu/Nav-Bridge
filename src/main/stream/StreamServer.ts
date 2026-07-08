@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import type { StreamStatus } from "../../shared/stream";
+import type { StreamDataEntry, StreamStatus } from "../../shared/stream";
 import type { StreamAdapter } from "./adapters/StreamAdapter";
 import { StreamStatistics } from "./statistics/StreamStatistics";
 
@@ -10,10 +10,12 @@ export interface StreamServerOptions {
 }
 
 type StatusListener = (status: StreamStatus) => void;
+type DataListener = (entry: StreamDataEntry) => void;
 
 export class StreamServer {
   private readonly statistics: StreamStatistics;
   private readonly listeners = new Set<StatusListener>();
+  private readonly dataListeners = new Set<DataListener>();
   private running = false;
   private loopPromise?: Promise<void>;
   private statusTimer?: NodeJS.Timeout;
@@ -114,6 +116,13 @@ export class StreamServer {
     };
   }
 
+  public onData(callback: DataListener): () => void {
+    this.dataListeners.add(callback);
+    return () => {
+      this.dataListeners.delete(callback);
+    };
+  }
+
   private async runLoop(): Promise<void> {
     while (this.running) {
       try {
@@ -124,12 +133,14 @@ export class StreamServer {
         }
 
         this.statistics.markInputBytes(data.length);
+        this.emitData(this.input.id, "input", data);
         await Promise.all(
           this.outputs.map(async (output, index) => {
             try {
               await output.write(data);
               this.statistics.markOutputBytes(index, data.length);
               this.statistics.setOutputStatus(index, "connected");
+              this.emitData(output.id, "output", data);
             } catch (error) {
               this.statistics.setOutputStatus(index, "error", this.toErrorMessage(error));
             }
@@ -147,6 +158,18 @@ export class StreamServer {
   private emitStatus(): void {
     const status = this.getStatus();
     this.listeners.forEach((listener) => listener(status));
+  }
+
+  private emitData(endpointId: string, direction: StreamDataEntry["direction"], data: Buffer): void {
+    const preview = data.subarray(0, 32).toString("hex").match(/.{1,2}/g)?.join(" ") ?? "";
+    const entry: StreamDataEntry = {
+      time: new Date().toISOString(),
+      endpointId,
+      direction,
+      bytes: data.length,
+      preview
+    };
+    this.dataListeners.forEach((listener) => listener(entry));
   }
 
   private toErrorMessage(error: unknown): string {

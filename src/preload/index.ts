@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { NavBridgeAPI, SerialPortInfo, WindowResizeEdge } from "../shared/ipc";
 import { ipcChannels } from "../shared/ipc";
-import type { LogEntry, StreamConfig, StreamStatus } from "../shared/stream";
+import type { LogEntry, StreamConfig, StreamDataEntry, StreamStatus } from "../shared/stream";
 
 const api: NavBridgeAPI = {
   startServer: async (config: StreamConfig) => await ipcRenderer.invoke(ipcChannels.startServer, config),
@@ -38,6 +38,11 @@ const api: NavBridgeAPI = {
     const listener = (_event: Electron.IpcRendererEvent, log: LogEntry): void => callback(log);
     ipcRenderer.on(ipcChannels.log, listener);
     return () => ipcRenderer.off(ipcChannels.log, listener);
+  },
+  onData: (callback: (entry: StreamDataEntry) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, entry: StreamDataEntry): void => callback(entry);
+    ipcRenderer.on(ipcChannels.data, listener);
+    return () => ipcRenderer.off(ipcChannels.data, listener);
   },
   onAlwaysOnTopChange: (callback: (alwaysOnTop: boolean) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, alwaysOnTop: boolean): void => callback(alwaysOnTop);

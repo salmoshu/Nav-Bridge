@@ -1,6 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArticleIcon from "@mui/icons-material/Article";
 import CircleIcon from "@mui/icons-material/Circle";
+import DataObjectIcon from "@mui/icons-material/DataObject";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -37,14 +38,15 @@ const statusColor = {
 } as const;
 
 const MAX_OUTPUTS = 7;
-export const endpointGridColumns = "20px 28px 48px 104px minmax(0,1fr) 48px 48px 80px";
+export const endpointGridColumns = "20px 28px 48px 104px minmax(0,1fr) 28px 28px 80px";
 export const endpointActionButtonSx = {
   p: 0,
   width: 20,
   height: 20
 } as const;
 export const endpointActionIconSx = {
-  fontSize: 16
+  fontSize: 16,
+  color: "text.primary"
 } as const;
 
 export function EndpointTable({
@@ -52,13 +54,15 @@ export function EndpointTable({
   status,
   onChange,
   onExport,
-  onShowLogs
+  onShowSystemLogs,
+  onShowData
 }: {
   config: StreamConfig;
   status?: StreamStatus;
   onChange: (config: StreamConfig) => void;
   onExport: () => void;
-  onShowLogs: (endpointId: string) => void;
+  onShowSystemLogs: () => void;
+  onShowData: (endpointId: string) => void;
 }) {
   const { ports, loading: serialPortsLoading, error: serialPortsError, refresh } = useSerialPorts();
   const statusMap = buildStatusMap(status);
@@ -112,11 +116,18 @@ export function EndpointTable({
           <Typography variant="subtitle2" fontWeight={600} fontSize="0.8125rem">
             Endpoints
           </Typography>
-          <Tooltip title="Export configuration">
-            <IconButton onClick={onExport}>
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          <Stack direction="row" spacing={0.25} alignItems="center">
+            <Tooltip title="View system logs">
+              <IconButton onClick={onShowSystemLogs}>
+                <ArticleIcon fontSize="small" sx={endpointActionIconSx} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Export configuration">
+              <IconButton onClick={onExport}>
+                <DownloadIcon fontSize="small" sx={endpointActionIconSx} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
         </Stack>
 
         <Box
@@ -148,7 +159,7 @@ export function EndpointTable({
           metric={statusMap[config.input.id]}
           onChange={updateInput}
           onConfigure={() => setEditingId(config.input.id)}
-          onShowLogs={() => onShowLogs(config.input.id)}
+          onShowData={() => onShowData(config.input.id)}
         />
 
         {config.outputs.map((output, index) => (
@@ -161,7 +172,7 @@ export function EndpointTable({
             onChange={(endpoint) => updateOutput(index, endpoint)}
             onConfigure={() => setEditingId(output.id)}
             onDelete={() => removeOutput(index)}
-            onShowLogs={() => onShowLogs(output.id)}
+            onShowData={() => onShowData(output.id)}
           />
         ))}
 
@@ -171,9 +182,9 @@ export function EndpointTable({
               startIcon={<AddIcon />}
               onClick={addOutput}
               size="small"
-              sx={{ fontSize: "0.75rem", py: 0.125 }}
+              sx={{ fontSize: "0.75rem", py: 0.125, textTransform: "none" }}
             >
-              Add output
+              Add Output
             </Button>
           </Box>
         )}
@@ -217,7 +228,7 @@ function EndpointRow({
   onChange,
   onConfigure,
   onDelete,
-  onShowLogs
+  onShowData
 }: {
   index: number;
   mode: StreamMode;
@@ -226,7 +237,7 @@ function EndpointRow({
   onChange: (endpoint: StreamEndpoint) => void;
   onConfigure: () => void;
   onDelete?: () => void;
-  onShowLogs: () => void;
+  onShowData: () => void;
 }) {
   const theme = useTheme();
   const types = allowedEndpointTypes(mode);
@@ -310,9 +321,9 @@ function EndpointRow({
             <SettingsIcon sx={endpointActionIconSx} />
           </IconButton>
         </Tooltip>
-        <Tooltip title="View logs">
-          <IconButton onClick={onShowLogs} sx={endpointActionButtonSx}>
-            <ArticleIcon sx={endpointActionIconSx} />
+        <Tooltip title="View data">
+          <IconButton onClick={onShowData} sx={endpointActionButtonSx}>
+            <DataObjectIcon sx={endpointActionIconSx} />
           </IconButton>
         </Tooltip>
         {onDelete != undefined && (

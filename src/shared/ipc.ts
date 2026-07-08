@@ -1,4 +1,4 @@
-import type { LogEntry, StreamConfig, StreamStatus } from "./stream";
+import type { LogEntry, StreamConfig, StreamDataEntry, StreamStatus } from "./stream";
 
 export interface SerialPortInfo {
   path: string;
@@ -30,6 +30,7 @@ export interface NavBridgeAPI {
   stopWindowResize(): Promise<void>;
   onStatus(callback: (status: StreamStatus) => void): () => void;
   onLog(callback: (log: LogEntry) => void): () => void;
+  onData(callback: (entry: StreamDataEntry) => void): () => void;
   onAlwaysOnTopChange(callback: (alwaysOnTop: boolean) => void): () => void;
 }
 
@@ -47,5 +48,6 @@ export const ipcChannels = {
   stopWindowResize: "nav-bridge:window-resize-stop",
   windowAlwaysOnTop: "nav-bridge:window-always-on-top",
   status: "nav-bridge:status",
-  log: "nav-bridge:log"
+  log: "nav-bridge:log",
+  data: "nav-bridge:data"
 } as const;

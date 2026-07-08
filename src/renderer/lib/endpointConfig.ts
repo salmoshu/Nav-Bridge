@@ -1,3 +1,4 @@
+import type { SerialPortInfo } from "../../shared/ipc";
 import type {
   SerialParams,
   StreamEndpoint,
@@ -71,7 +72,7 @@ export function endpointInfo(endpoint: StreamEndpoint): string {
     case "udp-client":
       return networkEndpointDisplay(endpoint);
     case "serial":
-      return `${params.port} @ ${params.baudRate}`;
+      return `${params.port}@${params.baudRate}`;
     default:
       return type;
   }
@@ -83,6 +84,17 @@ export function formatLogDialogTitle(endpoint: StreamEndpoint | undefined): stri
   }
   const role = endpoint.id === "input" ? "Input" : "Output";
   return `Logs for ${role} (${endpointInfo(endpoint)})`;
+}
+
+export function formatSerialPortLabel(port: SerialPortInfo): string {
+  const parts = [port.path];
+  if (port.manufacturer != undefined && port.manufacturer.length > 0) {
+    parts.push(port.manufacturer);
+  }
+  if (port.serialNumber != undefined && port.serialNumber.length > 0) {
+    parts.push(port.serialNumber);
+  }
+  return parts.join(" - ");
 }
 
 export function formatEndpointType(type: StreamType): string {
@@ -116,7 +128,7 @@ export function defaultParamsForType(type: StreamType): StreamEndpointParams {
   switch (type) {
     case "serial":
       return {
-        port: "COM3",
+        port: "",
         baudRate: 115200,
         dataBits: 8,
         parity: "none",

@@ -5,8 +5,8 @@ export function createAppTheme(mode: "light" | "dark"): Theme {
     palette: {
       mode,
       background: {
-        default: mode === "dark" ? "#111217" : "#f5f5f6",
-        paper: mode === "dark" ? "#181a20" : "#ffffff"
+        default: mode === "dark" ? "#14161b" : "#f5f5f6",
+        paper: mode === "dark" ? "#1d2027" : "#ffffff"
       },
       primary: {
         main: mode === "dark" ? "#74b7ff" : "#1565c0"
@@ -15,8 +15,8 @@ export function createAppTheme(mode: "light" | "dark"): Theme {
         main: mode === "dark" ? "#9ee493" : "#2e7d32"
       },
       text: {
-        primary: mode === "dark" ? "#e8e9eb" : "#1f2125",
-        secondary: mode === "dark" ? "#8a8f98" : "#5c6169"
+        primary: mode === "dark" ? "#d2d6dc" : "#1f2125",
+        secondary: mode === "dark" ? "#9aa1ab" : "#5c6169"
       }
     },
     shape: {

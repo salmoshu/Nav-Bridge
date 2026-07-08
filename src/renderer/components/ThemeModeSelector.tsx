@@ -33,25 +33,21 @@ export const themeModeMenuProps = {
 const themeOptions: {
   value: ThemeMode;
   label: string;
-  description: string;
   icon: React.ReactNode;
 }[] = [
   {
     value: "system",
     label: "跟随系统",
-    description: "根据系统外观自动切换",
     icon: <BrightnessAutoIcon sx={{ fontSize: 16 }} />
   },
   {
     value: "light",
-    label: "浅色",
-    description: "始终使用浅色主题",
+    label: "浅色模式",
     icon: <LightModeIcon sx={{ fontSize: 16 }} />
   },
   {
     value: "dark",
-    label: "深色",
-    description: "始终使用深色主题",
+    label: "深色模式",
     icon: <DarkModeIcon sx={{ fontSize: 16 }} />
   }
 ];
@@ -131,14 +127,9 @@ export function ThemeModeSelector({
           <MenuItem key={option.value} value={option.value} dense>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%", pr: 1 }}>
               {option.icon}
-              <Stack spacing={0}>
-                <Typography variant="body2" fontSize="0.8125rem">
-                  {option.label}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" fontSize="0.6875rem">
-                  {option.description}
-                </Typography>
-              </Stack>
+              <Typography variant="body2" fontSize="0.8125rem">
+                {option.label}
+              </Typography>
             </Stack>
           </MenuItem>
         ))}

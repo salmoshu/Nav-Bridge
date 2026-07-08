@@ -47,6 +47,7 @@ export function AppTitleBar({
   onToggleAlwaysOnTop
 }: AppTitleBarProps) {
   const api = useNavBridgeAPI();
+  const theme = useTheme();
 
   return (
     <Box
@@ -105,7 +106,10 @@ export function AppTitleBar({
                 }}
                 sx={{
                   p: 0.375,
-                  color: isAlwaysOnTop && alwaysOnTop ? "common.black" : "text.primary",
+                  color:
+                    isAlwaysOnTop && alwaysOnTop
+                      ? theme.palette.mode === "dark" ? "common.white" : "common.black"
+                      : "text.primary",
                   bgcolor: "transparent",
                   "&:hover": {
                     bgcolor: button.id === "close" ? "error.main" : "action.hover",
