@@ -1,6 +1,8 @@
 import type { BrowserWindow } from "electron";
-import { ipcMain } from "electron";
-import type { StartServerResult } from "../../shared/ipc";
+import { dialog, ipcMain, screen } from "electron";
+import { writeFile } from "node:fs/promises";
+import { SerialPort } from "serialport";
+import type { SerialPortInfo, StartServerResult } from "../../shared/ipc";
 import { ipcChannels } from "../../shared/ipc";
 import type { LogEntry, StreamConfig } from "../../shared/stream";
 import { ConfigStore } from "../config/ConfigStore";
@@ -11,6 +13,7 @@ import { createAdapter } from "../stream/createAdapter";
 export class IpcBridge {
   private server?: StreamServer;
   private lifecycle = Promise.resolve();
+  private dragInterval?: NodeJS.Timeout;
 
   public constructor(
     private readonly window: BrowserWindow,
@@ -22,6 +25,13 @@ export class IpcBridge {
     ipcMain.removeHandler(ipcChannels.stopServer);
     ipcMain.removeHandler(ipcChannels.loadConfig);
     ipcMain.removeHandler(ipcChannels.saveConfig);
+    ipcMain.removeHandler(ipcChannels.exportConfig);
+    ipcMain.removeHandler(ipcChannels.listSerialPorts);
+    ipcMain.removeHandler(ipcChannels.minimizeWindow);
+    ipcMain.removeHandler(ipcChannels.toggleAlwaysOnTop);
+    ipcMain.removeHandler(ipcChannels.closeWindow);
+    ipcMain.removeHandler(ipcChannels.startWindowDrag);
+    ipcMain.removeHandler(ipcChannels.stopWindowDrag);
 
     ipcMain.handle(
       ipcChannels.startServer,
@@ -55,9 +65,74 @@ export class IpcBridge {
       validateStreamConfig(config);
       this.configStore.save(config);
     });
+
+    ipcMain.handle(ipcChannels.exportConfig, async (_event, config: StreamConfig) => {
+      validateStreamConfig(config);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
+      const result = await dialog.showSaveDialog(this.window, {
+        defaultPath: `nav-bridge-config-${timestamp}.json`,
+        filters: [{ name: "JSON", extensions: ["json"] }]
+      });
+      if (!result.canceled && result.filePath) {
+        await writeFile(result.filePath, JSON.stringify(config, null, 2));
+      }
+    });
+
+    ipcMain.handle(ipcChannels.listSerialPorts, async (): Promise<SerialPortInfo[]> => {
+      const ports = await SerialPort.list();
+      return ports.map((port) => ({
+        path: port.path,
+        manufacturer: port.manufacturer,
+        serialNumber: port.serialNumber,
+        vendorId: port.vendorId,
+        productId: port.productId,
+        pnpId: port.pnpId
+      }));
+    });
+
+    ipcMain.handle(ipcChannels.minimizeWindow, () => {
+      this.window.minimize();
+    });
+
+    ipcMain.handle(ipcChannels.toggleAlwaysOnTop, (): boolean => {
+      const next = !this.window.isAlwaysOnTop();
+      this.window.setAlwaysOnTop(next);
+      if (!this.window.webContents.isDestroyed()) {
+        this.window.webContents.send(ipcChannels.windowAlwaysOnTop, next);
+      }
+      return next;
+    });
+
+    ipcMain.handle(ipcChannels.closeWindow, () => {
+      this.window.close();
+    });
+
+    ipcMain.handle(ipcChannels.startWindowDrag, (_event, offsetX: number, offsetY: number) => {
+      if (this.dragInterval != undefined) return;
+      const initialBounds = this.window.getBounds();
+      const initialCursor = screen.getCursorScreenPoint();
+      this.dragInterval = setInterval(() => {
+        const cursor = screen.getCursorScreenPoint();
+        this.window.setPosition(
+          initialBounds.x + (cursor.x - initialCursor.x),
+          initialBounds.y + (cursor.y - initialCursor.y)
+        );
+      }, 16);
+    });
+
+    ipcMain.handle(ipcChannels.stopWindowDrag, () => {
+      if (this.dragInterval != undefined) {
+        clearInterval(this.dragInterval);
+        this.dragInterval = undefined;
+      }
+    });
   }
 
   public async dispose(): Promise<void> {
+    if (this.dragInterval != undefined) {
+      clearInterval(this.dragInterval);
+      this.dragInterval = undefined;
+    }
     await this.enqueue(async () => {
       await this.server?.stop();
       this.server = undefined;

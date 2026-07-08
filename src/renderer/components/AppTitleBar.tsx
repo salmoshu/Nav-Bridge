@@ -3,6 +3,7 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { useEffect, useRef } from "react";
 import { useNavBridgeAPI } from "../hooks/useNavBridgeAPI";
 import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
@@ -24,6 +25,25 @@ export function AppTitleBar({
   onToggleAlwaysOnTop
 }: AppTitleBarProps) {
   const api = useNavBridgeAPI();
+  const dragging = useRef(false);
+
+  const stopDrag = (): void => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    void api.stopWindowDrag();
+  };
+
+  useEffect(() => {
+    const handleMouseUp = (): void => stopDrag();
+    const handleBlur = (): void => stopDrag();
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("blur", handleBlur);
+      stopDrag();
+    };
+  }, [api]);
 
   return (
     <Box
@@ -39,19 +59,17 @@ export function AppTitleBar({
         borderBottom: 1,
         borderColor: "divider"
       }}
+      onMouseDown={(event) => {
+        // Only start dragging when pressing the header itself or the title area,
+        // not the interactive controls on the right.
+        const target = event.target as HTMLElement;
+        const controls = target.closest("[data-header-controls]");
+        if (controls != undefined) return;
+        dragging.current = true;
+        void api.startWindowDrag(event.clientX, event.clientY);
+      }}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        sx={{
-          minWidth: 0,
-          // Make only the title area draggable so clicks on the rest of the header
-          // (e.g. closing an open theme dropdown) are handled normally.
-          WebkitAppRegion: "drag",
-          "app-region": "drag"
-        }}
-      >
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
         <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
           Nav-Bridge
         </Typography>
@@ -66,10 +84,11 @@ export function AppTitleBar({
       </Stack>
 
       <Stack
+        data-header-controls
         direction="row"
         spacing={0.5}
         alignItems="center"
-        sx={{ WebkitAppRegion: "no-drag", "app-region": "no-drag" }}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <ThemeModeSelector mode={themeMode} onChange={onThemeChange} />
 

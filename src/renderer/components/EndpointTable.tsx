@@ -1,6 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-import SaveIcon from "@mui/icons-material/Save";
+import DownloadIcon from "@mui/icons-material/Download";
 import SettingsIcon from "@mui/icons-material/Settings";
 import CircleIcon from "@mui/icons-material/Circle";
 import {
@@ -21,7 +21,8 @@ import {
   allowedEndpointTypes,
   createDefaultEndpoint,
   createEndpointWithType,
-  endpointSummary
+  endpointHost,
+  formatEndpointType
 } from "../lib/endpointConfig";
 import { buildStatusMap } from "../lib/endpointStatus";
 import { EndpointConfigDialog } from "./EndpointConfigDialog";
@@ -35,18 +36,18 @@ const statusColor = {
 } as const;
 
 const MAX_OUTPUTS = 7;
-const endpointGridColumns = "28px 96px minmax(0, 1fr) 48px 48px 56px";
+const endpointGridColumns = "28px 48px 80px minmax(0, 1fr) 48px 48px 56px";
 
 export function EndpointTable({
   config,
   status,
   onChange,
-  onSave
+  onExport
 }: {
   config: StreamConfig;
   status?: StreamStatus;
   onChange: (config: StreamConfig) => void;
-  onSave: () => void;
+  onExport: () => void;
 }) {
   const { ports, loading: serialPortsLoading, error: serialPortsError, refresh } = useSerialPorts();
   const statusMap = buildStatusMap(status);
@@ -89,9 +90,9 @@ export function EndpointTable({
           <Typography variant="subtitle2" fontWeight={600}>
             Endpoints
           </Typography>
-          <Tooltip title="Save configuration">
-            <IconButton onClick={onSave}>
-              <SaveIcon fontSize="small" />
+          <Tooltip title="Export configuration">
+            <IconButton onClick={onExport}>
+              <DownloadIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Stack>
@@ -109,6 +110,7 @@ export function EndpointTable({
           }}
         >
           <span>#</span>
+          <span>Role</span>
           <span>Type</span>
           <span>Info</span>
           <span>Bytes</span>
@@ -226,6 +228,9 @@ function EndpointRow({
       >
         {index}
       </Box>
+      <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem" }}>
+        {isInput ? "Input" : "Output"}
+      </Typography>
       <TextField
         select
         value={endpoint.type}
@@ -233,6 +238,7 @@ function EndpointRow({
         sx={{ minWidth: 0 }}
         SelectProps={{
           sx: { fontSize: "0.7rem" },
+          renderValue: (selected) => formatEndpointType(selected as StreamType),
           MenuProps: {
             PaperProps: {
               sx: {
@@ -246,12 +252,12 @@ function EndpointRow({
       >
         {types.map((type) => (
           <MenuItem key={type} value={type}>
-            {type}
+            {formatEndpointType(type)}
           </MenuItem>
         ))}
       </TextField>
       <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0, fontSize: "0.7rem" }}>
-        {endpointSummary(endpoint)}
+        {endpointHost(endpoint)}
       </Typography>
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
         {metric.bytes.toLocaleString()}
