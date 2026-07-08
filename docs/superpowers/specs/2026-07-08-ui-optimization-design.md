@@ -25,11 +25,11 @@ Header 右侧的 `ThemeModeSelector` 是一个 `FormControl + Select`，当前�
 
 图标映射：
 
-| 主题 | 图标（MUI） | 下拉文字 | 说明 |
-|------|-------------|----------|------|
+| 主题   | 图标（MUI）      | 下拉文字 | 说明                 |
+| ------ | ---------------- | -------- | -------------------- |
 | system | `BrightnessAuto` | 跟随系统 | 根据系统外观自动切换 |
-| light | `LightMode` | 浅色 | 始终使用浅色主题 |
-| dark | `DarkMode` | 深色 | 始终使用深色主题 |
+| light  | `LightMode`      | 浅色     | 始终使用浅色主题     |
+| dark   | `DarkMode`       | 深色     | 始终使用深色主题     |
 
 实现方式：
 

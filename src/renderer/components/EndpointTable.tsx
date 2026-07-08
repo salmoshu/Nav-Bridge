@@ -244,18 +244,10 @@ function EndpointRow({
       <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0, fontSize: "0.7rem" }}>
         {endpointSummary(endpoint)}
       </Typography>
-      <Typography
-        variant="caption"
-        noWrap
-        sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}
-      >
+      <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
         {metric.bytes.toLocaleString()}
       </Typography>
-      <Typography
-        variant="caption"
-        noWrap
-        sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}
-      >
+      <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
         {metric.bps.toLocaleString()}
       </Typography>
       <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
