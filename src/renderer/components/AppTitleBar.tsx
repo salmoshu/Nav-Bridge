@@ -3,14 +3,34 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
-import { useEffect, useRef } from "react";
 import { useNavBridgeAPI } from "../hooks/useNavBridgeAPI";
 import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
 import { ThemeModeSelector } from "./ThemeModeSelector";
 
+function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
+  return (
+    <Box
+      component="svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
+    </Box>
+  );
+}
+
 export interface AppTitleBarProps {
-  running: boolean;
   alwaysOnTop: boolean;
   themeMode: ThemeMode;
   onThemeChange: (mode: ThemeMode) => void;
@@ -18,32 +38,12 @@ export interface AppTitleBarProps {
 }
 
 export function AppTitleBar({
-  running,
   alwaysOnTop,
   themeMode,
   onThemeChange,
   onToggleAlwaysOnTop
 }: AppTitleBarProps) {
   const api = useNavBridgeAPI();
-  const dragging = useRef(false);
-
-  const stopDrag = (): void => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    void api.stopWindowDrag();
-  };
-
-  useEffect(() => {
-    const handleMouseUp = (): void => stopDrag();
-    const handleBlur = (): void => stopDrag();
-    window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("blur", handleBlur);
-    return () => {
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("blur", handleBlur);
-      stopDrag();
-    };
-  }, [api]);
 
   return (
     <Box
@@ -57,44 +57,27 @@ export function AppTitleBar({
         gap: 1,
         bgcolor: "background.paper",
         borderBottom: 1,
-        borderColor: "divider"
-      }}
-      onMouseEnter={() => {
-        void api.disableWindowResize();
-      }}
-      onMouseLeave={() => {
-        void api.enableWindowResize();
-      }}
-      onMouseDown={(event) => {
-        // Only start dragging when pressing the header itself or the title area,
-        // not the interactive controls on the right.
-        const target = event.target as HTMLElement;
-        const controls = target.closest("[data-header-controls]");
-        if (controls != undefined) return;
-        dragging.current = true;
-        void api.startWindowDrag(event.clientX, event.clientY);
+        borderColor: "divider",
+        WebkitAppRegion: "drag"
       }}
     >
       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+        <ElectronLogoPlaceholder />
         <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
           Nav-Bridge
         </Typography>
-        <Box
-          sx={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            bgcolor: running ? "success.main" : "text.disabled"
-          }}
-        />
+        <Typography variant="caption" color="text.secondary" noWrap fontSize="0.6875rem">
+          v{__APP_VERSION__}
+        </Typography>
       </Stack>
 
       <Stack
         data-header-controls
         direction="row"
-        spacing={0.5}
+        spacing={0.75}
         alignItems="center"
         onMouseDown={(event) => event.stopPropagation()}
+        sx={{ WebkitAppRegion: "no-drag" }}
       >
         <ThemeModeSelector mode={themeMode} onChange={onThemeChange} />
 
@@ -116,8 +99,8 @@ export function AppTitleBar({
                   }
                 }}
                 sx={{
-                  color: "text.primary",
-                  bgcolor: isAlwaysOnTop && alwaysOnTop ? "action.selected" : "transparent",
+                  color: isAlwaysOnTop && alwaysOnTop ? "common.black" : "text.primary",
+                  bgcolor: "transparent",
                   "&:hover": {
                     bgcolor: button.id === "close" ? "error.main" : "action.hover",
                     color: button.id === "close" ? "error.contrastText" : "text.primary"

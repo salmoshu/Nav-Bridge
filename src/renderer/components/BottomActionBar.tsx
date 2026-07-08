@@ -13,6 +13,26 @@ export interface BottomActionBarProps {
   onExit: () => void;
 }
 
+export const bottomActionBarSx = {
+  px: 1,
+  py: 1.25,
+  borderTop: 1,
+  borderColor: "divider",
+  bgcolor: "background.paper"
+} as const;
+
+export const bottomActionButtonSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  minWidth: 58,
+  height: 24,
+  fontSize: "0.7rem",
+  lineHeight: 1,
+  px: 1,
+  py: 0.125,
+  "& .MuiButton-startIcon": { mr: 0.375 }
+} as const;
+
 export function BottomActionBar({ running, onStartStop, onOptions, onExit }: BottomActionBarProps) {
   const actions = getBottomActions(running);
 
@@ -29,16 +49,8 @@ export function BottomActionBar({ running, onStartStop, onOptions, onExit }: Bot
   };
 
   return (
-    <Box
-      sx={{
-        px: 1,
-        py: 0.75,
-        borderTop: 1,
-        borderColor: "divider",
-        bgcolor: "background.paper"
-      }}
-    >
-      <Stack direction="row" spacing={1} justifyContent="flex-end">
+    <Box sx={bottomActionBarSx}>
+      <Stack direction="row" spacing={0.75} justifyContent="flex-end">
         {actions.map((action) => (
           <Button
             key={action.id}
@@ -47,7 +59,7 @@ export function BottomActionBar({ running, onStartStop, onOptions, onExit }: Bot
             disabled={action.disabled}
             startIcon={icons[action.id]}
             onClick={handlers[action.id]}
-            sx={{ minWidth: 64, fontSize: "0.75rem", px: 1.5, py: 0.5 }}
+            sx={bottomActionButtonSx}
           >
             {action.label}
           </Button>
