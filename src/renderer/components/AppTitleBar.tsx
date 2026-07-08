@@ -16,16 +16,21 @@ function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
+      <defs>
+        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#42a5f5" />
+          <stop offset="100%" stopColor="#ab47bc" />
+        </linearGradient>
+      </defs>
+      <circle cx="12" cy="12" r="3" fill="url(#logoGradient)" stroke="none" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" stroke="url(#logoGradient)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" stroke="#66bb6a" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" stroke="#ffa726" />
     </Box>
   );
 }
@@ -57,27 +62,39 @@ export function AppTitleBar({
         gap: 1,
         bgcolor: "background.paper",
         borderBottom: 1,
-        borderColor: "divider",
-        WebkitAppRegion: "drag"
+        borderColor: "divider"
       }}
     >
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={{
+          minWidth: 0,
+          // Only the title/logo area is a native drag region so that clicks on
+          // the rest of the header are handled by the browser (e.g. closing an
+          // open theme dropdown).
+          WebkitAppRegion: "drag",
+          appRegion: "drag"
+        }}
+      >
         <ElectronLogoPlaceholder />
         <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
           Nav-Bridge
         </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap fontSize="0.6875rem">
-          v{__APP_VERSION__}
-        </Typography>
+        <Box sx={{ display: "inline-flex", alignItems: "center" }}>
+          <Typography variant="caption" color="text.secondary" noWrap fontSize="0.6875rem" lineHeight={1}>
+            v{__APP_VERSION__}
+          </Typography>
+        </Box>
       </Stack>
 
       <Stack
         data-header-controls
         direction="row"
-        spacing={0.75}
+        spacing={0.5}
         alignItems="center"
-        onMouseDown={(event) => event.stopPropagation()}
-        sx={{ WebkitAppRegion: "no-drag" }}
+        sx={{ WebkitAppRegion: "no-drag", appRegion: "no-drag" }}
       >
         <ThemeModeSelector mode={themeMode} onChange={onThemeChange} />
 
@@ -99,6 +116,7 @@ export function AppTitleBar({
                   }
                 }}
                 sx={{
+                  p: 0.375,
                   color: isAlwaysOnTop && alwaysOnTop ? "common.black" : "text.primary",
                   bgcolor: "transparent",
                   "&:hover": {
@@ -107,10 +125,14 @@ export function AppTitleBar({
                   }
                 }}
               >
-                {button.id === "minimize" && <RemoveIcon fontSize="small" />}
+                {button.id === "minimize" && <RemoveIcon sx={{ fontSize: 16 }} />}
                 {button.id === "toggleAlwaysOnTop" &&
-                  (alwaysOnTop ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />)}
-                {button.id === "close" && <CloseIcon fontSize="small" />}
+                  (alwaysOnTop ? (
+                    <PushPinIcon sx={{ fontSize: 16 }} />
+                  ) : (
+                    <PushPinOutlinedIcon sx={{ fontSize: 16 }} />
+                  ))}
+                {button.id === "close" && <CloseIcon sx={{ fontSize: 16 }} />}
               </IconButton>
             </Tooltip>
           );

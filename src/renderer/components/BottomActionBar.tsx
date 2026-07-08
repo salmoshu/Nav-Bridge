@@ -30,7 +30,7 @@ export const bottomActionButtonSx = {
   lineHeight: 1,
   px: 1,
   py: 0.125,
-  "& .MuiButton-startIcon": { mr: 0.375 }
+  "& .MuiButton-startIcon": { mr: 0.125 }
 } as const;
 
 export function BottomActionBar({ running, onStartStop, onOptions, onExit }: BottomActionBarProps) {
@@ -50,7 +50,7 @@ export function BottomActionBar({ running, onStartStop, onOptions, onExit }: Bot
 
   return (
     <Box sx={bottomActionBarSx}>
-      <Stack direction="row" spacing={0.75} justifyContent="flex-end">
+      <Stack direction="row" spacing={1.25} justifyContent="flex-end">
         {actions.map((action) => (
           <Button
             key={action.id}
