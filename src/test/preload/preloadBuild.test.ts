@@ -13,6 +13,23 @@ describe("preload build regression", () => {
     expect(preloadPath).not.toContain(".mjs");
   });
 
+  it("points the monitor window preload path at the same CJS artifact", () => {
+    const monitorSource = fs.readFileSync(path.join(repoRoot, "src/main/monitor/MonitorWindow.ts"), "utf-8");
+    const match = monitorSource.match(/preload:\s*join\(__dirname,\s*["']([^"']+)["']\)/);
+    expect(match).toBeTruthy();
+    expect(match![1]).toMatch(/\/index\.cjs$/);
+  });
+
+  it("uses the same preload path for both main and monitor windows", () => {
+    const windowOptionsSource = fs.readFileSync(path.join(repoRoot, "src/main/windowOptions.ts"), "utf-8");
+    const monitorSource = fs.readFileSync(path.join(repoRoot, "src/main/monitor/MonitorWindow.ts"), "utf-8");
+    const mainMatch = windowOptionsSource.match(/preload:\s*join\(__dirname,\s*["']([^"']+)["']\)/);
+    const monitorMatch = monitorSource.match(/preload:\s*join\(__dirname,\s*["']([^"']+)["']\)/);
+    expect(mainMatch).toBeTruthy();
+    expect(monitorMatch).toBeTruthy();
+    expect(mainMatch![1]).toBe(monitorMatch![1]);
+  });
+
   it("forces the electron-vite preload output to index.cjs", () => {
     const configSource = fs.readFileSync(path.join(repoRoot, "electron.vite.config.ts"), "utf-8");
     const preloadMatch = configSource.match(/preload:\s*\{([\s\S]*?)\n\s*\},?\s*\n\s*renderer:/);

@@ -1,4 +1,4 @@
-import type { LogEntry, StreamConfig, StreamDataEntry, StreamStatus } from "./stream";
+import type { LogEntry, StreamConfig, StreamDataEntry, StreamStatus, StreamMode } from "./stream";
 
 export interface SerialPortInfo {
   path: string;
@@ -7,6 +7,7 @@ export interface SerialPortInfo {
   vendorId?: string;
   productId?: string;
   pnpId?: string;
+  friendlyName?: string;
 }
 
 export interface StartServerResult {
@@ -28,6 +29,9 @@ export interface NavBridgeAPI {
   closeWindow(): Promise<void>;
   startWindowResize(edge: WindowResizeEdge): Promise<void>;
   stopWindowResize(): Promise<void>;
+  openMonitorWindow(): Promise<void>;
+  closeMonitorWindow(): Promise<void>;
+  showFileDialog(mode: StreamMode, suggestedPath?: string): Promise<string | undefined>;
   onStatus(callback: (status: StreamStatus) => void): () => void;
   onLog(callback: (log: LogEntry) => void): () => void;
   onData(callback: (entry: StreamDataEntry) => void): () => void;
@@ -46,6 +50,9 @@ export const ipcChannels = {
   closeWindow: "nav-bridge:window-close",
   startWindowResize: "nav-bridge:window-resize-start",
   stopWindowResize: "nav-bridge:window-resize-stop",
+  openMonitorWindow: "nav-bridge:monitor-open",
+  closeMonitorWindow: "nav-bridge:monitor-close",
+  showFileDialog: "nav-bridge:show-file-dialog",
   windowAlwaysOnTop: "nav-bridge:window-always-on-top",
   status: "nav-bridge:status",
   log: "nav-bridge:log",

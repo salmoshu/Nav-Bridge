@@ -25,4 +25,13 @@ describe("ipcChannels", () => {
   it("includes the per-endpoint data stream channel", () => {
     expect(ipcChannels.data).toBe("nav-bridge:data");
   });
+
+  it("includes monitor window channels", () => {
+    expect(ipcChannels.openMonitorWindow).toBe("nav-bridge:monitor-open");
+    expect(ipcChannels.closeMonitorWindow).toBe("nav-bridge:monitor-close");
+  });
+
+  it("includes the file dialog channel", () => {
+    expect(ipcChannels.showFileDialog).toBe("nav-bridge:show-file-dialog");
+  });
 });

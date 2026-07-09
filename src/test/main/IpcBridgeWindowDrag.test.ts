@@ -100,4 +100,29 @@ describe("IpcBridge window resize", () => {
     expect(window.setBounds).toHaveBeenCalledWith({ x: 10, y: 0, width: 560, height: 440 });
     expect(window.setResizable).not.toHaveBeenCalled();
   });
+
+  it("toggles always-on-top for the main window and syncs the monitor window", () => {
+    const window = {
+      close: jest.fn(),
+      getBounds: jest.fn(() => ({ x: 10, y: 20, width: 560, height: 420 })),
+      isAlwaysOnTop: jest.fn(() => false),
+      minimize: jest.fn(),
+      setAlwaysOnTop: jest.fn(),
+      setBounds: jest.fn(),
+      setPosition: jest.fn(),
+      setResizable: jest.fn(),
+      webContents: {
+        isDestroyed: jest.fn(() => false),
+        send: jest.fn()
+      }
+    };
+    const bridge = new IpcBridge(window as never);
+
+    bridge.register();
+    const result = mockHandlers.get(ipcChannels.toggleAlwaysOnTop)?.({});
+
+    expect(result).toBe(true);
+    expect(window.setAlwaysOnTop).toHaveBeenCalledWith(true);
+    expect(window.webContents.send).toHaveBeenCalledWith(ipcChannels.windowAlwaysOnTop, true);
+  });
 });

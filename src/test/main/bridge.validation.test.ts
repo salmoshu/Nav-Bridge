@@ -7,11 +7,17 @@ const mockRemoveHandler = jest.fn();
 const mockHandle = jest.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
   mockHandlers.set(channel, handler);
 });
+const mockShowOpenDialog = jest.fn();
 const mockShowSaveDialog = jest.fn();
+const mockGetAppPath = jest.fn(() => "/app/path");
 const mockSave = jest.fn();
 
 jest.mock("electron", () => ({
+  app: {
+    getAppPath: mockGetAppPath
+  },
   dialog: {
+    showOpenDialog: mockShowOpenDialog,
     showSaveDialog: mockShowSaveDialog
   },
   ipcMain: {
@@ -159,13 +165,13 @@ describe("IpcBridge validation timing", () => {
     await expect(handler!({}, config)).resolves.toEqual({ success: true });
     await waitFor(() =>
       window.webContents.send.mock.calls.some(
-        ([channel, payload]) => channel === ipcChannels.data && payload.endpointId === "input"
+        ([channel, payload]) => channel === ipcChannels.data && Array.isArray(payload.data)
       )
     );
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       ipcChannels.data,
-      expect.objectContaining({ endpointId: "input", bytes: 11, preview: "62 72 69 64 67 65 2d 64 61 74 61" })
+      expect.objectContaining({ data: Buffer.from("bridge-data").toJSON().data })
     );
     expect(window.webContents.send).not.toHaveBeenCalledWith(
       ipcChannels.log,
@@ -182,11 +188,55 @@ describe("IpcBridge validation timing", () => {
     );
     expect(window.webContents.send).toHaveBeenCalledWith(
       ipcChannels.log,
-      expect.objectContaining({ message: expect.stringContaining("First data from input") })
+      expect.objectContaining({ message: expect.stringContaining("First data: 11 bytes") })
     );
 
     const stopHandler = mockHandlers.get(ipcChannels.stopServer);
     await stopHandler?.({});
     await new Promise<void>((resolve) => sourceServer.close(() => resolve()));
+  });
+
+  it("showFileDialog uses an open dialog for input mode and defaults to the app path", async () => {
+    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ["/data/capture.rtcm3"] });
+    const bridge = new IpcBridge(createWindow() as never);
+    bridge.register();
+
+    const handler = mockHandlers.get(ipcChannels.showFileDialog);
+    expect(handler).toBeDefined();
+    await expect(handler!({}, "input")).resolves.toBe("/data/capture.rtcm3");
+    expect(mockGetAppPath).toHaveBeenCalled();
+    expect(mockShowOpenDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ defaultPath: "/app/path", properties: ["openFile"] })
+    );
+  });
+
+  it("showFileDialog uses the suggested path's directory when one is provided", async () => {
+    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ["/data/another.rtcm3"] });
+    const bridge = new IpcBridge(createWindow() as never);
+    bridge.register();
+
+    const handler = mockHandlers.get(ipcChannels.showFileDialog);
+    expect(handler).toBeDefined();
+    await expect(handler!({}, "input", "/data/capture.rtcm3")).resolves.toBe("/data/another.rtcm3");
+    expect(mockGetAppPath).not.toHaveBeenCalled();
+    expect(mockShowOpenDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ defaultPath: "/data", properties: ["openFile"] })
+    );
+  });
+
+  it("showFileDialog uses a save dialog for output mode", async () => {
+    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: "/data/output.rtcm3" });
+    const bridge = new IpcBridge(createWindow() as never);
+    bridge.register();
+
+    const handler = mockHandlers.get(ipcChannels.showFileDialog);
+    expect(handler).toBeDefined();
+    await expect(handler!({}, "output")).resolves.toBe("/data/output.rtcm3");
+    expect(mockShowSaveDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ defaultPath: "/app/path" })
+    );
   });
 });
