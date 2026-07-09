@@ -9,4 +9,5 @@ export interface StreamAdapter {
   read(maxBytes: number): Promise<Buffer | undefined>;
   write(data: Buffer): Promise<void>;
   getStatus(): StreamAdapterStatus;
+  getClients(): number;
 }

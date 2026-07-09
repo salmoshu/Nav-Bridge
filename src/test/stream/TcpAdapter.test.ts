@@ -44,6 +44,30 @@ describe("TcpAdapter", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
+  it("returns to connected status when a client connects after all clients disconnected", async () => {
+    const output = new TcpAdapter("tcp-output", "output", {
+      type: "tcp-server",
+      params: { host: "127.0.0.1", port: 0 }
+    });
+    await output.open();
+    const port = output.getBoundPort();
+
+    const client1 = net.createConnection({ host: "127.0.0.1", port });
+    await new Promise<void>((resolve) => client1.once("connect", resolve));
+    expect(output.getStatus().status).toBe("connected");
+
+    client1.destroy();
+    await new Promise<void>((resolve) => client1.once("close", resolve));
+    expect(output.getStatus().status).toBe("idle");
+
+    const client2 = net.createConnection({ host: "127.0.0.1", port });
+    await new Promise<void>((resolve) => client2.once("connect", resolve));
+    expect(output.getStatus().status).toBe("connected");
+
+    client2.destroy();
+    await output.close();
+  });
+
   it("sends connectMessage after TCP client connection", async () => {
     const server = net.createServer();
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

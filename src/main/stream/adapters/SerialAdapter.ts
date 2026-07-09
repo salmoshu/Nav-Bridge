@@ -84,4 +84,8 @@ export class SerialAdapter implements StreamAdapter {
       error: this.error
     };
   }
+
+  public getClients(): number {
+    return 0;
+  }
 }

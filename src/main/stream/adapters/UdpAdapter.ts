@@ -48,7 +48,9 @@ export class UdpAdapter implements StreamAdapter {
           };
           this.socket?.once("error", onError);
           this.socket?.once("listening", onListening);
-          this.socket?.bind(this.config.params.port, this.config.params.host ?? "0.0.0.0");
+          const params = this.config.params;
+          const host = params.host && params.host.length > 0 ? params.host : "0.0.0.0";
+          this.socket?.bind(params.port, host);
         });
       }
       this.status = "connected";
@@ -104,6 +106,10 @@ export class UdpAdapter implements StreamAdapter {
       status: this.status,
       error: this.error
     };
+  }
+
+  public getClients(): number {
+    return 0;
   }
 
   public getBoundPort(): number {

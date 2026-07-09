@@ -23,4 +23,16 @@ describe("createAdapter", () => {
 
     expect(() => createAdapter(endpoint, "output")).toThrow("UDP server is only supported as an input");
   });
+
+  it("creates file adapters for input and output endpoints", () => {
+    const endpoint: StreamEndpoint = {
+      id: "input",
+      type: "file",
+      enabled: true,
+      params: { path: "data.rtcm", timeTag: true }
+    };
+
+    expect(createAdapter(endpoint, "input").type).toBe("file");
+    expect(createAdapter({ ...endpoint, id: "output-1" }, "output").type).toBe("file");
+  });
 });

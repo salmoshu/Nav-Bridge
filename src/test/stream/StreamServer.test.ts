@@ -31,6 +31,10 @@ class MemoryAdapter implements StreamAdapter {
     return this.reads.shift();
   }
 
+  public pushRead(data: Buffer): void {
+    this.reads.push(data);
+  }
+
   public async write(data: Buffer): Promise<void> {
     this.written.push(Buffer.from(data));
   }
@@ -42,6 +46,10 @@ class MemoryAdapter implements StreamAdapter {
       mode: this.mode,
       status: this.opened ? "connected" : "idle"
     };
+  }
+
+  public getClients(): number {
+    return 0;
   }
 }
 
@@ -80,7 +88,7 @@ describe("StreamServer", () => {
     expect(server.getStatus().outputs.map((output) => output.bytes)).toEqual([7, 7]);
   });
 
-  it("emits per-endpoint data entries for input reads and output writes", async () => {
+  it("emits input data entries with raw bytes", async () => {
     const input = new MemoryAdapter("input", "tcp-server", "input", [Buffer.from("abc")]);
     const outputA = new MemoryAdapter("out-a", "tcp-client", "output");
     const outputB = new MemoryAdapter("out-b", "udp-client", "output");
@@ -88,7 +96,7 @@ describe("StreamServer", () => {
       bufferSize: 16,
       idleDelayMs: 1
     });
-    const entries: Array<{ endpointId: string; direction: string; bytes: number; preview: string }> = [];
+    const entries: Array<{ data: number[] }> = [];
 
     server.onData((entry) => entries.push(entry));
 
@@ -96,16 +104,8 @@ describe("StreamServer", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     await server.stop();
 
-    expect(entries.map((entry) => ({
-      endpointId: entry.endpointId,
-      direction: entry.direction,
-      bytes: entry.bytes,
-      preview: entry.preview
-    }))).toEqual([
-      { endpointId: "input", direction: "input", bytes: 3, preview: "61 62 63" },
-      { endpointId: "out-a", direction: "output", bytes: 3, preview: "61 62 63" },
-      { endpointId: "out-b", direction: "output", bytes: 3, preview: "61 62 63" }
-    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.data).toEqual([0x61, 0x62, 0x63]);
   });
 
   it("counts and emits data from a real TCP client input after the server sends payload", async () => {
@@ -127,7 +127,7 @@ describe("StreamServer", () => {
       bufferSize: 16,
       idleDelayMs: 1
     });
-    const entries: Array<{ endpointId: string; bytes: number; preview: string }> = [];
+    const entries: Array<{ data: number[] }> = [];
 
     server.onData((entry) => entries.push(entry));
     await server.start();
@@ -138,11 +138,36 @@ describe("StreamServer", () => {
     expect(output.written.map((chunk) => chunk.toString())).toEqual(["hello"]);
     expect(server.getStatus().input.bytes).toBe(5);
     expect(entries).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ endpointId: "input", bytes: 5, preview: "68 65 6c 6c 6f" }),
-        expect.objectContaining({ endpointId: "output-1", bytes: 5, preview: "68 65 6c 6c 6f" })
-      ])
+      expect.arrayContaining([expect.objectContaining({ data: [0x68, 0x65, 0x6c, 0x6c, 0x6f] })])
     );
+  });
+
+  it("keeps a TCP server output idle at start and waiting when data has no clients", async () => {
+    const input = new MemoryAdapter("input", "tcp-server", "input", []);
+    const output = new TcpAdapter("output-1", "output", {
+      type: "tcp-server",
+      params: { host: "127.0.0.1", port: 0 }
+    });
+
+    const server = new StreamServer(input, [output], {
+      bufferSize: 16,
+      idleDelayMs: 1,
+      statusInterval: 50
+    });
+
+    await server.start();
+    expect(server.getStatus().outputs[0]?.status).toBe("idle");
+
+    input.pushRead(Buffer.from("abc"));
+    await waitFor(() => server.getStatus().input.bytes === 3);
+    await waitFor(() => server.getStatus().outputs[0]?.status === "waiting");
+
+    await server.stop();
+
+    const status = server.getStatus();
+    expect(status.outputs[0]?.status).not.toBe("error");
+    expect(status.outputs[0]?.bytes).toBe(0);
+    await output.close();
   });
 
   it("rolls back opened adapters when startup fails", async () => {

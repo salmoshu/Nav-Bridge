@@ -15,6 +15,7 @@ export class TcpAdapter implements StreamAdapter {
   public readonly type: "tcp-server" | "tcp-client";
   private server?: net.Server;
   private socket?: net.Socket;
+  private sockets = new Set<net.Socket>();
   private status: StreamAdapterStatus["status"] = "idle";
   private error?: string;
   private readonly reads = new QueuedReads();
@@ -47,6 +48,10 @@ export class TcpAdapter implements StreamAdapter {
     this.reads.close();
     this.socket?.destroy();
     this.socket = undefined;
+    for (const socket of this.sockets) {
+      socket.destroy();
+    }
+    this.sockets.clear();
     if (this.server != undefined) {
       await new Promise<void>((resolve) => this.server?.close(() => resolve()));
       this.server = undefined;
@@ -59,18 +64,18 @@ export class TcpAdapter implements StreamAdapter {
   }
 
   public async write(data: Buffer): Promise<void> {
+    if (this.config.type === "tcp-server") {
+      const sockets = Array.from(this.sockets);
+      if (sockets.length === 0) {
+        throw new Error(`${this.id} has no active TCP clients`);
+      }
+      await Promise.all(sockets.map((socket) => this.writeToSocket(socket, data)));
+      return;
+    }
     if (this.socket == undefined || this.socket.destroyed) {
       throw new Error(`${this.id} has no active TCP connection`);
     }
-    await new Promise<void>((resolve, reject) => {
-      this.socket?.write(data, (error) => {
-        if (error != undefined) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
-    });
+    await this.writeToSocket(this.socket, data);
   }
 
   public getStatus(): StreamAdapterStatus {
@@ -81,6 +86,10 @@ export class TcpAdapter implements StreamAdapter {
       status: this.status,
       error: this.error
     };
+  }
+
+  public getClients(): number {
+    return this.sockets.size;
   }
 
   public getBoundPort(): number {
@@ -94,9 +103,10 @@ export class TcpAdapter implements StreamAdapter {
   private async openServer(params: TcpServerParams): Promise<void> {
     this.server = net.createServer((socket) => this.attachSocket(socket));
     this.server.on("error", (error) => this.markError(error));
+    const host = params.host && params.host.length > 0 ? params.host : "0.0.0.0";
     await new Promise<void>((resolve, reject) => {
       this.server?.once("error", reject);
-      this.server?.listen(params.port, params.host ?? "0.0.0.0", () => {
+      this.server?.listen(params.port, host, () => {
         this.server?.off("error", reject);
         resolve();
       });
@@ -116,14 +126,42 @@ export class TcpAdapter implements StreamAdapter {
   }
 
   private attachSocket(socket: net.Socket): void {
-    this.socket?.destroy();
-    this.socket = socket;
+    if (this.config.type === "tcp-client") {
+      this.socket?.destroy();
+      this.socket = socket;
+    } else {
+      this.sockets.add(socket);
+      if (this.status !== "connected") {
+        this.status = "connected";
+        this.error = undefined;
+      }
+      socket.on("close", () => {
+        this.sockets.delete(socket);
+        if (this.sockets.size === 0 && this.status !== "idle") {
+          this.status = "idle";
+        }
+      });
+    }
     socket.on("data", (chunk) => this.reads.push(chunk));
     socket.on("error", (error) => this.markError(error));
-    socket.on("close", () => {
-      if (this.status !== "idle") {
-        this.status = "idle";
-      }
+    if (this.config.type === "tcp-client") {
+      socket.on("close", () => {
+        if (this.status !== "idle") {
+          this.status = "idle";
+        }
+      });
+    }
+  }
+
+  private writeToSocket(socket: net.Socket, data: Buffer): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      socket.write(data, (error) => {
+        if (error != undefined) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
     });
   }
 

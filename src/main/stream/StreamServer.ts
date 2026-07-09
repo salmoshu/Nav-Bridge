@@ -53,7 +53,7 @@ export class StreamServer {
         this.statistics.setOutputStatus(index, "connecting");
         await output.open();
         opened.push(output);
-        this.statistics.setOutputStatus(index, "connected");
+        this.syncOutputStatus(index, output);
       }
     } catch (error) {
       this.running = false;
@@ -105,7 +105,29 @@ export class StreamServer {
   }
 
   public getStatus(): StreamStatus {
+    for (const [index, output] of this.outputs.entries()) {
+      this.syncOutputStatus(index, output);
+    }
     return this.statistics.snapshot(this.running);
+  }
+
+  private syncOutputStatus(index: number, output: StreamAdapter): void {
+    const adapterStatus = output.getStatus().status;
+    if (adapterStatus === "error") {
+      return;
+    }
+    if (output.type === "tcp-server") {
+      const clients = output.getClients();
+      const currentStatus = this.statistics.getOutputStatus(index);
+      this.statistics.setOutputClients(index, clients);
+      if (clients > 0) {
+        this.statistics.setOutputStatus(index, "connected");
+      } else if (currentStatus !== "waiting") {
+        this.statistics.setOutputStatus(index, "idle");
+      }
+      return;
+    }
+    this.statistics.setOutputStatus(index, adapterStatus);
   }
 
   public onStatus(callback: StatusListener): () => void {
@@ -133,14 +155,17 @@ export class StreamServer {
         }
 
         this.statistics.markInputBytes(data.length);
-        this.emitData(this.input.id, "input", data);
+        this.emitData(data);
         await Promise.all(
           this.outputs.map(async (output, index) => {
+            if (output.type === "tcp-server" && output.getClients() === 0) {
+              this.statistics.setOutputStatus(index, "waiting");
+              return;
+            }
             try {
               await output.write(data);
               this.statistics.markOutputBytes(index, data.length);
               this.statistics.setOutputStatus(index, "connected");
-              this.emitData(output.id, "output", data);
             } catch (error) {
               this.statistics.setOutputStatus(index, "error", this.toErrorMessage(error));
             }
@@ -160,14 +185,10 @@ export class StreamServer {
     this.listeners.forEach((listener) => listener(status));
   }
 
-  private emitData(endpointId: string, direction: StreamDataEntry["direction"], data: Buffer): void {
-    const preview = data.subarray(0, 32).toString("hex").match(/.{1,2}/g)?.join(" ") ?? "";
+  private emitData(data: Buffer): void {
     const entry: StreamDataEntry = {
       time: new Date().toISOString(),
-      endpointId,
-      direction,
-      bytes: data.length,
-      preview
+      data: Array.from(data)
     };
     this.dataListeners.forEach((listener) => listener(entry));
   }

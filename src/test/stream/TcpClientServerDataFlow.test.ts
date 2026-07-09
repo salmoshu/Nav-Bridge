@@ -31,9 +31,9 @@ describe("TCP client input + TCP server output data flow", () => {
       statusInterval: 1000
     });
 
-    const dataEntries: Array<{ endpointId: string; direction: "input" | "output" }> = [];
+    const dataEntries: Array<{ data: number[] }> = [];
     server.onData((entry) => {
-      dataEntries.push({ endpointId: entry.endpointId, direction: entry.direction });
+      dataEntries.push({ data: entry.data });
     });
 
     await server.start();
@@ -50,11 +50,11 @@ describe("TCP client input + TCP server output data flow", () => {
     // Wait for data to be forwarded
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const inputEntries = dataEntries.filter((entry) => entry.endpointId === "input");
-    const outputEntries = dataEntries.filter((entry) => entry.endpointId === "output-1");
+    expect(dataEntries.length).toBeGreaterThan(0);
 
-    expect(inputEntries.length).toBeGreaterThan(0);
-    expect(outputEntries.length).toBeGreaterThan(0);
+    const connectedStatus = server.getStatus();
+    expect(connectedStatus.outputs[0]?.status).toBe("connected");
+    expect(connectedStatus.outputs[0]?.bytes).toBeGreaterThan(0);
 
     outputClient.destroy();
     await server.stop();

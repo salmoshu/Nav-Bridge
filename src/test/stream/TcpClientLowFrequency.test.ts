@@ -28,9 +28,9 @@ describe("TCP client input with low frequency data", () => {
       statusInterval: 500
     });
 
-    const dataEntries: Array<{ endpointId: string; bytes: number }> = [];
+    const dataEntries: Array<{ data: number[] }> = [];
     serverInstance.onData((entry) => {
-      dataEntries.push({ endpointId: entry.endpointId, bytes: entry.bytes });
+      dataEntries.push({ data: entry.data });
     });
 
     await serverInstance.start();
@@ -42,6 +42,6 @@ describe("TCP client input with low frequency data", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
 
     expect(dataEntries.length).toBeGreaterThan(0);
-    expect(dataEntries[0].bytes).toBeGreaterThan(0);
+    expect(dataEntries[0]?.data.length).toBeGreaterThan(0);
   });
 });
