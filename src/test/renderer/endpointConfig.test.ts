@@ -7,7 +7,9 @@ import {
   endpointSummary,
   formatEndpointType,
   formatLogDialogTitle,
-  formatSerialPortLabel
+  formatSerialPortLabel,
+  isClientEndpoint,
+  isServerEndpoint
 } from "../../renderer/lib/endpointConfig";
 import type { SerialPortInfo } from "../../shared/ipc";
 import type { StreamEndpoint } from "../../shared/stream";
@@ -40,14 +42,14 @@ describe("endpointSummary", () => {
     expect(endpointSummary(endpoint)).toBe("Serial COM3@115200");
   });
 
-  it("summarises a TCP server endpoint with host and port", () => {
+  it("summarises a TCP server endpoint with port only", () => {
     const endpoint: StreamEndpoint = {
       id: "input",
       type: "tcp-server",
       enabled: true,
-      params: { host: "0.0.0.0", port: 2101 }
+      params: { port: 2101 }
     };
-    expect(endpointSummary(endpoint)).toBe("TCP server 0.0.0.0:2101");
+    expect(endpointSummary(endpoint)).toBe("TCP server 2101");
   });
 
   it("summarises a TCP client endpoint", () => {
@@ -60,14 +62,14 @@ describe("endpointSummary", () => {
     expect(endpointSummary(endpoint)).toBe("TCP client 192.168.1.10:2101");
   });
 
-  it("summarises a UDP server endpoint with host and port", () => {
+  it("summarises a UDP server endpoint with port only", () => {
     const endpoint: StreamEndpoint = {
       id: "input",
       type: "udp-server",
       enabled: true,
-      params: { host: "127.0.0.1", port: 2101 }
+      params: { port: 2101 }
     };
-    expect(endpointSummary(endpoint)).toBe("UDP server 127.0.0.1:2101");
+    expect(endpointSummary(endpoint)).toBe("UDP server 2101");
   });
 
   it("summarises a UDP client endpoint", () => {
@@ -82,22 +84,22 @@ describe("endpointSummary", () => {
 });
 
 describe("endpointPath", () => {
-  it("returns host:port for TCP/UDP server endpoints, defaulting host to 0.0.0.0", () => {
+  it("returns only the port for TCP/UDP server endpoints", () => {
     const tcpServer: StreamEndpoint = {
       id: "input",
       type: "tcp-server",
       enabled: true,
-      params: { host: "", port: 2101 }
+      params: { port: 2101 }
     };
-    expect(endpointPath(tcpServer)).toBe("0.0.0.0:2101");
+    expect(endpointPath(tcpServer)).toBe("2101");
 
     const udpServer: StreamEndpoint = {
       id: "input",
       type: "udp-server",
       enabled: true,
-      params: { host: "127.0.0.1", port: 2101 }
+      params: { port: 2101 }
     };
-    expect(endpointPath(udpServer)).toBe("127.0.0.1:2101");
+    expect(endpointPath(udpServer)).toBe("2101");
   });
 
   it("returns host:port for TCP/UDP client endpoints", () => {
@@ -152,9 +154,9 @@ describe("formatLogDialogTitle", () => {
       id: "input",
       type: "tcp-server",
       enabled: true,
-      params: { host: "0.0.0.0", port: 2101 }
+      params: { port: 2101 }
     };
-    expect(formatLogDialogTitle(input)).toBe("Logs for Input (0.0.0.0:2101)");
+    expect(formatLogDialogTitle(input)).toBe("Logs for Input (2101)");
 
     const output: StreamEndpoint = {
       id: "output-1",
@@ -182,16 +184,16 @@ describe("defaultParamsForType", () => {
     });
   });
 
-  it("returns TCP server defaults", () => {
-    expect(defaultParamsForType("tcp-server")).toEqual({ host: "127.0.0.1", port: 2101 });
+  it("returns TCP server defaults without host", () => {
+    expect(defaultParamsForType("tcp-server")).toEqual({ port: 2101 });
   });
 
   it("returns TCP client defaults", () => {
     expect(defaultParamsForType("tcp-client")).toEqual({ host: "127.0.0.1", port: 2201 });
   });
 
-  it("returns UDP server defaults", () => {
-    expect(defaultParamsForType("udp-server")).toEqual({ host: "127.0.0.1", port: 2101 });
+  it("returns UDP server defaults without host", () => {
+    expect(defaultParamsForType("udp-server")).toEqual({ port: 2101 });
   });
 
   it("returns UDP client defaults", () => {
@@ -279,7 +281,7 @@ describe("formatEndpointType", () => {
 });
 
 describe("endpointHost", () => {
-  it("returns host for network endpoints", () => {
+  it("returns host for client endpoints", () => {
     const client: StreamEndpoint = {
       id: "output-1",
       type: "tcp-client",
@@ -289,14 +291,14 @@ describe("endpointHost", () => {
     expect(endpointHost(client)).toBe("192.168.1.10");
   });
 
-  it("returns 0.0.0.0 for server endpoints with empty host", () => {
+  it("returns an empty string for server endpoints", () => {
     const server: StreamEndpoint = {
       id: "input",
       type: "tcp-server",
       enabled: true,
-      params: { host: "", port: 2101 }
+      params: { port: 2101 }
     };
-    expect(endpointHost(server)).toBe("0.0.0.0");
+    expect(endpointHost(server)).toBe("");
   });
 
   it("returns port for serial endpoints", () => {
@@ -314,5 +316,33 @@ describe("endpointHost", () => {
       }
     };
     expect(endpointHost(serial)).toBe("COM3");
+  });
+});
+
+describe("isServerEndpoint", () => {
+  it("returns true for TCP/UDP server types", () => {
+    expect(isServerEndpoint({ type: "tcp-server" })).toBe(true);
+    expect(isServerEndpoint({ type: "udp-server" })).toBe(true);
+  });
+
+  it("returns false for client and non-network types", () => {
+    expect(isServerEndpoint({ type: "tcp-client" })).toBe(false);
+    expect(isServerEndpoint({ type: "udp-client" })).toBe(false);
+    expect(isServerEndpoint({ type: "serial" })).toBe(false);
+    expect(isServerEndpoint({ type: "file" })).toBe(false);
+  });
+});
+
+describe("isClientEndpoint", () => {
+  it("returns true for TCP/UDP client types", () => {
+    expect(isClientEndpoint({ type: "tcp-client" })).toBe(true);
+    expect(isClientEndpoint({ type: "udp-client" })).toBe(true);
+  });
+
+  it("returns false for server and non-network types", () => {
+    expect(isClientEndpoint({ type: "tcp-server" })).toBe(false);
+    expect(isClientEndpoint({ type: "udp-server" })).toBe(false);
+    expect(isClientEndpoint({ type: "serial" })).toBe(false);
+    expect(isClientEndpoint({ type: "file" })).toBe(false);
   });
 });

@@ -25,8 +25,8 @@ import {
   flowControlOptions,
   formatEndpointType,
   formatSerialPortLabel,
+  isClientEndpoint,
   isFileEndpoint,
-  isNetworkEndpoint,
   isSerialEndpoint,
   parityOptions,
   stopBitsOptions
@@ -122,7 +122,7 @@ export function EndpointConfigDialog({
             ))}
           </TextField>
 
-          {isNetworkEndpoint(draft) && (
+          {isClientEndpoint(draft) && (
             <Stack direction="row" spacing={1}>
               <TextField
                 label="Host"
@@ -138,6 +138,16 @@ export function EndpointConfigDialog({
                 sx={{ minWidth: 120 }}
               />
             </Stack>
+          )}
+
+          {(draft.type === "tcp-server" || draft.type === "udp-server") && (
+            <TextField
+              label="Port"
+              type="number"
+              value={Number(params.port ?? 0)}
+              onChange={(event) => updateParam("port", Number(event.target.value))}
+              fullWidth
+            />
           )}
 
           {draft.type === "tcp-client" && (

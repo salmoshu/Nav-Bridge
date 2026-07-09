@@ -157,7 +157,8 @@ describe("endpointGridColumns", () => {
     expect(source).toContain('"host:port"');
     expect(source).toContain('"port@baudRate"');
     expect(source).toContain('"file path"');
-    expect(source).toContain("parseNetworkPath");
+    expect(source).toContain("parseClientPath");
+    expect(source).toContain("parseServerPort");
     expect(source).toContain("parseSerialPath");
     expect(source).toContain("isFileEndpoint");
   });

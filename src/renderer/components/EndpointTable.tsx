@@ -32,8 +32,9 @@ import {
   createEndpointWithType,
   endpointPath,
   formatEndpointType,
+  isClientEndpoint,
   isFileEndpoint,
-  isNetworkEndpoint
+  isServerEndpoint
 } from "../lib/endpointConfig";
 import { buildStatusMap } from "../lib/endpointStatus";
 import {
@@ -265,17 +266,25 @@ export function EndpointTable({
   );
 }
 
-function parseNetworkPath(value: string): { host: string; port: number } | undefined {
+function parseClientPath(value: string): { host: string; port: number } | undefined {
   const lastColon = value.lastIndexOf(":");
   if (lastColon === -1) {
     return undefined;
   }
   const host = value.slice(0, lastColon);
   const port = Number.parseInt(value.slice(lastColon + 1), 10);
-  if (Number.isNaN(port)) {
+  if (Number.isNaN(port) || host.length === 0) {
     return undefined;
   }
   return { host, port };
+}
+
+function parseServerPort(value: string): number | undefined {
+  const port = Number.parseInt(value, 10);
+  if (Number.isNaN(port)) {
+    return undefined;
+  }
+  return port;
 }
 
 function parseSerialPath(value: string): { port: string; baudRate: number } | undefined {
@@ -302,8 +311,18 @@ function EndpointPathEditor({
 }) {
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
-    if (isNetworkEndpoint(endpoint)) {
-      const parsed = parseNetworkPath(value);
+    if (isServerEndpoint(endpoint)) {
+      const port = parseServerPort(value);
+      if (port == undefined) {
+        return;
+      }
+      const params = endpoint.params as { port: number };
+      onChange({ ...endpoint, params: { ...params, port } });
+      return;
+    }
+
+    if (isClientEndpoint(endpoint)) {
+      const parsed = parseClientPath(value);
       if (parsed == undefined) {
         return;
       }
@@ -335,11 +354,13 @@ function EndpointPathEditor({
     });
   };
 
-  const placeholder = isNetworkEndpoint(endpoint)
-    ? "host:port"
-    : isFileEndpoint(endpoint)
-      ? "file path"
-      : "port@baudRate";
+  const placeholder = isServerEndpoint(endpoint)
+    ? "port"
+    : isClientEndpoint(endpoint)
+      ? "host:port"
+      : isFileEndpoint(endpoint)
+        ? "file path"
+        : "port@baudRate";
 
   return (
     <TextField

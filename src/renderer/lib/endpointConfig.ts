@@ -19,6 +19,10 @@ export const endpointTypes: StreamType[] = [
 
 export const networkTypes: StreamType[] = ["tcp-server", "tcp-client", "udp-server", "udp-client"];
 
+export const serverTypes: StreamType[] = ["tcp-server", "udp-server"];
+
+export const clientTypes: StreamType[] = ["tcp-client", "udp-client"];
+
 export const baudRates = [9600, 19200, 38400, 57600, 115200, 230400];
 
 export const parityOptions: SerialParams["parity"][] = ["none", "even", "odd"];
@@ -48,10 +52,27 @@ export function isFileEndpoint(endpoint: { type: StreamType }): boolean {
   return endpoint.type === "file";
 }
 
-function networkEndpointDisplay(endpoint: StreamEndpoint): string {
+export function isServerEndpoint(endpoint: { type: StreamType }): boolean {
+  return serverTypes.includes(endpoint.type);
+}
+
+export function isClientEndpoint(endpoint: { type: StreamType }): boolean {
+  return clientTypes.includes(endpoint.type);
+}
+
+function clientEndpointDisplay(endpoint: StreamEndpoint): string {
   const params = endpoint.params as unknown as Record<string, unknown>;
   const host = endpointHost(endpoint);
   return `${host}:${params.port}`;
+}
+
+function serverEndpointDisplay(endpoint: StreamEndpoint): string {
+  const params = endpoint.params as unknown as Record<string, unknown>;
+  return String(params.port ?? "");
+}
+
+function networkEndpointDisplay(endpoint: StreamEndpoint): string {
+  return isServerEndpoint(endpoint) ? serverEndpointDisplay(endpoint) : clientEndpointDisplay(endpoint);
 }
 
 export function endpointSummary(endpoint: StreamEndpoint): string {
@@ -132,7 +153,7 @@ export function endpointHost(endpoint: StreamEndpoint): string {
   switch (type) {
     case "tcp-server":
     case "udp-server":
-      return typeof params.host === "string" && params.host.length > 0 ? params.host : "0.0.0.0";
+      return typeof params.host === "string" ? params.host : "";
     case "tcp-client":
     case "udp-client":
       return typeof params.host === "string" ? params.host : "";
@@ -166,7 +187,7 @@ export function defaultParamsForType(type: StreamType): StreamEndpointParams {
       } satisfies FileParams;
     case "tcp-server":
     case "udp-server":
-      return { host: "127.0.0.1", port: 2101 };
+      return { port: 2101 };
     case "tcp-client":
     case "udp-client":
       return { host: "127.0.0.1", port: 2201 };

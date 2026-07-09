@@ -105,4 +105,22 @@ describe("EndpointConfigDialog source", () => {
     expect(source).toContain("handleBrowseFile");
     expect(source).toContain("showFileDialog");
   });
+
+  it("shows only Port for TCP/UDP server endpoints", () => {
+    const source = readSource();
+    const serverIndex = source.indexOf('draft.type === "tcp-server"');
+    expect(serverIndex).toBeGreaterThanOrEqual(0);
+    expect(source.indexOf('draft.type === "udp-server"')).toBeGreaterThanOrEqual(0);
+    // The Host label must appear inside the client block, before the server block.
+    const hostIndex = source.indexOf('label="Host"');
+    expect(hostIndex).toBeGreaterThanOrEqual(0);
+    expect(hostIndex).toBeLessThan(serverIndex);
+  });
+
+  it("shows Host and Port for TCP/UDP client endpoints", () => {
+    const source = readSource();
+    expect(source).toContain("isClientEndpoint(draft)");
+    expect(source).toContain('label="Host"');
+    expect(source).toContain('label="Port"');
+  });
 });
