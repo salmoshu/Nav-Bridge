@@ -1,4 +1,5 @@
 import type {
+  FileParams,
   SerialParams,
   StreamEndpoint,
   StreamMode,
@@ -8,6 +9,7 @@ import type {
   UdpServerParams
 } from "../../shared/stream";
 import type { StreamAdapter } from "./adapters/StreamAdapter";
+import { FileAdapter } from "./adapters/FileAdapter";
 import { SerialAdapter } from "./adapters/SerialAdapter";
 import { TcpAdapter } from "./adapters/TcpAdapter";
 import { UdpAdapter } from "./adapters/UdpAdapter";
@@ -42,6 +44,8 @@ export function createAdapter(endpoint: StreamEndpoint, mode: StreamMode): Strea
       });
     case "serial":
       return new SerialAdapter(endpoint.id, mode, endpoint.params as SerialParams);
+    case "file":
+      return new FileAdapter(endpoint.id, mode, endpoint.params as FileParams);
     default:
       throw new Error(`Unsupported stream type: ${(endpoint as StreamEndpoint).type}`);
   }

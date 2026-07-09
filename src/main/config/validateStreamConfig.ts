@@ -1,4 +1,5 @@
 import type {
+  FileParams,
   SerialParams,
   StreamConfig,
   StreamEndpoint,
@@ -7,6 +8,7 @@ import type {
   UdpClientParams,
   UdpServerParams
 } from "../../shared/stream";
+import { streamOptionLimits, type StreamOptionKey } from "../../shared/streamOptions";
 
 export function validateStreamConfig(config: StreamConfig): void {
   if (config.version !== "0.0.1") {
@@ -15,13 +17,10 @@ export function validateStreamConfig(config: StreamConfig): void {
   if (!config.input.enabled) {
     throw new Error("Input stream must be enabled");
   }
-  if (config.outputs.filter((output) => output.enabled).length === 0) {
-    throw new Error("At least one output stream is required");
-  }
-  assertPositiveInteger(config.options.bufferSize, "bufferSize");
-  assertPositiveInteger(config.options.statusInterval, "statusInterval");
-  assertPositiveInteger(config.options.reconnectInterval, "reconnectInterval");
-  assertPositiveInteger(config.options.inactiveTimeout, "inactiveTimeout");
+  assertStreamOption(config.options.bufferSize, "bufferSize");
+  assertStreamOption(config.options.statusInterval, "statusInterval");
+  assertStreamOption(config.options.reconnectInterval, "reconnectInterval");
+  assertStreamOption(config.options.inactiveTimeout, "inactiveTimeout");
   validateEndpoint(config.input.id, config.input.type, config.input.params);
   config.outputs
     .filter((output) => output.enabled)
@@ -49,6 +48,9 @@ function validateEndpoint(id: string, type: string, params: unknown): void {
     case "serial":
       validateSerialParams(params as SerialParams);
       return;
+    case "file":
+      validateFileParams(params as FileParams);
+      return;
     default:
       throw new Error(`Unsupported stream type: ${type}`);
   }
@@ -56,9 +58,6 @@ function validateEndpoint(id: string, type: string, params: unknown): void {
 
 function validateServerParams(params: TcpServerParams | UdpServerParams, type: string): void {
   assertPort(params.port, `${type}.port`);
-  if (params.host != undefined) {
-    assertNonEmpty(params.host, `${type}.host`);
-  }
 }
 
 function validateServerPortConflicts(input: StreamEndpoint, outputs: StreamEndpoint[]): void {
@@ -137,6 +136,26 @@ function validateSerialParams(params: SerialParams): void {
   }
 }
 
+function validateFileParams(params: FileParams): void {
+  assertNonEmpty(params.path, "file.path");
+  if (typeof params.timeTag !== "boolean") {
+    throw new Error("file.timeTag must be a boolean");
+  }
+  if (params.replaySpeed != undefined && (!Number.isFinite(params.replaySpeed) || params.replaySpeed <= 0)) {
+    throw new Error("file.replaySpeed must be a positive number");
+  }
+  if (params.startOffset != undefined && (!Number.isFinite(params.startOffset) || params.startOffset < 0)) {
+    throw new Error("file.startOffset must be zero or positive");
+  }
+  if (
+    params.filePositionBytes != undefined &&
+    params.filePositionBytes !== 4 &&
+    params.filePositionBytes !== 8
+  ) {
+    throw new Error("file.filePositionBytes must be 4 or 8");
+  }
+}
+
 function assertPort(value: number, name: string): void {
   if (!Number.isInteger(value) || value < 0 || value > 65535) {
     throw new Error(`${name} must be a port between 0 and 65535`);
@@ -146,6 +165,13 @@ function assertPort(value: number, name: string): void {
 function assertPositiveInteger(value: number, name: string): void {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer`);
+  }
+}
+
+function assertStreamOption(value: number, name: StreamOptionKey): void {
+  const limits = streamOptionLimits[name];
+  if (!Number.isInteger(value) || value < limits.min || value > limits.max) {
+    throw new Error(`${name} must be between ${limits.min} and ${limits.max}`);
   }
 }
 

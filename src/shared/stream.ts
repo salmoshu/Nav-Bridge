@@ -1,6 +1,6 @@
-export type StreamType = "tcp-server" | "tcp-client" | "udp-server" | "udp-client" | "serial";
+export type StreamType = "tcp-server" | "tcp-client" | "udp-server" | "udp-client" | "serial" | "file";
 export type StreamMode = "input" | "output";
-export type ConnectionStatus = "idle" | "connecting" | "connected" | "error";
+export type ConnectionStatus = "idle" | "connecting" | "connected" | "waiting" | "error";
 
 export interface TcpServerParams {
   port: number;
@@ -32,8 +32,16 @@ export interface SerialParams {
   flowControl: "none" | "rtscts";
 }
 
+export interface FileParams {
+  path: string;
+  timeTag: boolean;
+  replaySpeed?: number;
+  startOffset?: number;
+  filePositionBytes?: 4 | 8;
+}
+
 export type StreamEndpointParams =
-  TcpServerParams | TcpClientParams | UdpServerParams | UdpClientParams | SerialParams;
+  TcpServerParams | TcpClientParams | UdpServerParams | UdpClientParams | SerialParams | FileParams;
 
 export interface StreamEndpoint {
   id: string;
@@ -70,6 +78,8 @@ export interface StreamMetric {
   status: ConnectionStatus;
   bytes: number;
   bps: number;
+  uptime?: number;
+  clients?: number;
   error?: string;
 }
 
@@ -87,10 +97,7 @@ export interface LogEntry {
 
 export interface StreamDataEntry {
   time: string;
-  endpointId: string;
-  direction: "input" | "output";
-  bytes: number;
-  preview: string;
+  data: number[];
 }
 
 export const defaultStreamConfig: StreamConfig = {
