@@ -20,8 +20,8 @@ Nav-Bridge 参考 RTKLIB 中的 `strsvr` 应用，使用 Web 技术栈（TypeScr
 
 本版本仅聚焦框架搭建与最小可用转发能力：
 
-- **支持的传输类型**：TCP Server / TCP Client、UDP Server / UDP Client、Serial。
-- **不支持的类型**：NTRIP（Client/Server/Caster）、文件（File）输入输出。
+- **支持的传输类型**：TCP Server / TCP Client、UDP Server / UDP Client、Serial、File。
+- **不支持的类型**：NTRIP（Client/Server/Caster）。
 - **支持的能力**：1 入 N 出透明字节转发、连接状态监控、字节/码率统计。
 - **暂不支持的能力**：RTCM/接收机原始格式转换、NMEA GGA 请求、周期命令、relay-back、日志记录。这些作为后续扩展项。
 
@@ -31,16 +31,16 @@ Nav-Bridge 参考 RTKLIB 中的 `strsvr` 应用，使用 Web 技术栈（TypeScr
 
 ### 2.1 功能需求
 
-| 编号 | 需求                   | 优先级 | 说明                                                                    |
-| ---- | ---------------------- | ------ | ----------------------------------------------------------------------- |
-| F-01 | 配置输入流             | 高     | 支持 TCP Server / TCP Client / UDP Server / Serial 作为输入。           |
-| F-02 | 配置多个输出流         | 高     | 支持 TCP Server / TCP Client / UDP Client / Serial 作为输出，数量 >=1。 |
-| F-03 | 启动/停止转发服务      | 高     | 一键启动所有流连接，失败时回滚并提示错误。                              |
-| F-04 | 实时字节转发           | 高     | 从输入流读取数据后，并发写入所有输出流。                                |
-| F-05 | 状态监控               | 高     | 显示输入/每路输出的连接状态、累计字节数、实时码率（bps）。              |
-| F-06 | UI 风格对齐 Lichtblick | 中     | 使用 MUI 组件、深色主题、状态面板、日志视图。                           |
-| F-07 | 配置持久化             | 中     | 保存/读取用户配置的流参数。                                             |
-| F-08 | 错误与日志展示         | 中     | 在 UI 中展示连接错误、读写异常等关键事件。                              |
+| 编号 | 需求                   | 优先级 | 说明                                                                           |
+| ---- | ---------------------- | ------ | ------------------------------------------------------------------------------ |
+| F-01 | 配置输入流             | 高     | 支持 TCP Server / TCP Client / UDP Server / Serial / File 作为输入。           |
+| F-02 | 配置多个输出流         | 高     | 支持 TCP Server / TCP Client / UDP Client / Serial / File 作为输出，数量 >=1。 |
+| F-03 | 启动/停止转发服务      | 高     | 一键启动所有流连接，失败时回滚并提示错误。                                     |
+| F-04 | 实时字节转发           | 高     | 从输入流读取数据后，并发写入所有输出流。                                       |
+| F-05 | 状态监控               | 高     | 显示输入/每路输出的连接状态、累计字节数、实时码率（bps）。                     |
+| F-06 | UI 风格对齐 Lichtblick | 中     | 使用 MUI 组件、深色主题、状态面板、日志视图。                                  |
+| F-07 | 配置持久化             | 中     | 保存/读取用户配置的流参数。                                                    |
+| F-08 | 错误与日志展示         | 中     | 在 UI 中展示连接错误、读写异常等关键事件。                                     |
 
 ### 2.2 非功能需求
 
@@ -69,12 +69,13 @@ Nav-Bridge 参考 RTKLIB 中的 `strsvr` 应用，使用 Web 技术栈（TypeScr
 │   ├── adapters：统一流适配器接口                                     │
 │   │   ├── TcpAdapter（tcp server / client）                          │
 │   │   ├── UdpAdapter（udp server / client）                          │
-│   │   └── SerialAdapter（serial port）                               │
+│   │   ├── SerialAdapter（serial port）                               │
+│   │   └── FileAdapter（file / RTKLIB time tag）                      │
 │   ├── statistics：字节/码率/状态聚合                                  │
 │   └── ipc-bridge：主进程 ↔ 渲染进程通信封装                          │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │
-                    TCP / UDP / Serial (raw bytes)
+                    TCP / UDP / Serial / File (raw bytes)
 ```
 
 ### 3.1 与 Nav-Tools-Lichtblick 的关系
@@ -155,6 +156,15 @@ interface StreamAdapter {
 - 支持参数：port（串口号）、baudRate、dataBits、parity、stopBits、flowControl。
 - 主进程直接持有串口句柄，渲染进程通过 IPC 操作。
 - 打开/关闭/读写均通过 `SerialPort` 实例完成。
+
+#### FileAdapter
+
+基于 Node.js `fs/promises`，参考 RTKLIB `stream.c` 中 `STR_FILE` 和 `TIMETAG` 的实现。
+
+- File 输入可直接顺序读取普通文件。
+- 启用 time tag 时读取同路径追加 `.tag` 的 RTKLIB 时间戳文件，并按记录的 tick / file position 控制回放节奏。
+- File 输出可写入普通文件；启用 time tag 时同步写入 `<path>.tag`，记录每次写入后的累计文件位置。
+- 当前实现支持 4 字节和 8 字节文件位置记录；暂未实现 RTKLIB 的路径替换关键字和 `::S=` 自动换文件能力。
 
 ### 4.4 StreamStatistics
 
@@ -241,53 +251,61 @@ interface NavBridgeAPI {
 
 ```
 Nav-Bridge/
-├── doc/
-│   └── design.md                 # 本文档
+├── docs/
+│   ├── design.md                 # 本文档
+│   ├── architecture.md           # 当前实现架构
+│   └── note.md                   # 调试与实现经验记录
 ├── src/
 │   ├── main/                     # Electron 主进程
 │   │   ├── index.ts              # 主进程入口
+│   │   ├── config/               # 配置持久化和运行期校验
+│   │   ├── ipc/                  # IPC 主进程端
+│   │   ├── monitor/              # 监控窗口生命周期与数据推送
 │   │   ├── stream/
 │   │   │   ├── StreamServer.ts   # 核心转发服务
 │   │   │   ├── adapters/
 │   │   │   │   ├── StreamAdapter.ts
 │   │   │   │   ├── TcpAdapter.ts
 │   │   │   │   ├── UdpAdapter.ts
-│   │   │   │   └── SerialAdapter.ts
+│   │   │   │   ├── SerialAdapter.ts
+│   │   │   │   └── FileAdapter.ts
 │   │   │   ├── statistics/
 │   │   │   │   └── StreamStatistics.ts
-│   │   │   └── types.ts
-│   │   ├── ipc/
-│   │   │   └── bridge.ts         # IPC 主进程端
-│   │   └── config/
-│   │       └── ConfigStore.ts    # 配置持久化
+│   │   │   └── createAdapter.ts
 │   ├── preload/
 │   │   └── index.ts              # contextBridge 暴露 API
 │   ├── renderer/                 # Electron 渲染进程
 │   │   ├── index.tsx
+│   │   ├── monitor.tsx
 │   │   ├── App.tsx
 │   │   ├── components/
-│   │   │   ├── ConnectionPanel.tsx
-│   │   │   ├── StreamList.tsx
-│   │   │   ├── StatusCard.tsx
-│   │   │   └── LogView.tsx
+│   │   │   ├── AppTitleBar.tsx
+│   │   │   ├── EndpointTable.tsx
+│   │   │   ├── OptionsDialog.tsx
+│   │   │   └── MonitorApp.tsx
 │   │   ├── hooks/
 │   │   │   ├── useStreamStatus.ts
 │   │   │   └── useNavBridgeAPI.ts
-│   │   └── theme.ts              # 对齐 Lichtblick 的 MUI 主题
+│   │   ├── lib/
+│   │   └── theme.ts
 │   ├── shared/                   # 主/渲染共享类型
 │   │   ├── ipc.ts
-│   │   └── stream.ts
+│   │   ├── monitorLimits.ts
+│   │   ├── stream.ts
+│   │   └── streamOptions.ts
 │   └── test/                     # 测试
+│       ├── main/
+│       ├── preload/
+│       ├── renderer/
+│       ├── shared/
 │       └── stream/
-│           ├── StreamServer.test.ts
-│           ├── TcpAdapter.test.ts
-│           └── UdpAdapter.test.ts
 ├── package.json
 ├── tsconfig.json
-├── vite.config.ts                # 渲染进程 Vite 配置
-├── electron.vite.config.ts       # Electron 主进程/预加载 Vite 配置
-├── jest.config.js
-├── .eslintrc.yaml
+├── electron.vite.config.ts       # Electron main/preload/renderer 构建配置
+├── index.html
+├── monitor.html
+├── jest.config.cjs
+├── yarn.lock
 └── .prettierrc.yaml
 ```
 
@@ -304,6 +322,7 @@ Nav-Bridge/
 | 状态管理 | React Context + `useState`/`useReducer`     | 第一阶段无需引入 Redux。                                                                                  |
 | 串口     | `serialport` 12.x                           | Electron 主进程事实标准。                                                                                 |
 | TCP/UDP  | Node.js `net` / `dgram`                     | 原生模块，无需额外依赖。                                                                                  |
+| 文件     | Node.js `fs/promises`                       | 读写普通文件和 RTKLIB `.tag` 时间戳文件。                                                                 |
 | 测试     | Jest + ts-jest                              | 与 Lichtblick 测试栈一致。                                                                                |
 | 包管理   | Yarn 1.22.x                                 | 使用 Yarn Classic 管理依赖，提交 `yarn.lock` 保证安装可复现。                                             |
 | 代码规范 | ESLint + Prettier                           | 参考 Lichtblick 配置。                                                                                    |
@@ -324,9 +343,9 @@ Nav-Bridge/
 ```typescript
 interface StreamEndpoint {
   id: string;
-  type: "tcp-server" | "tcp-client" | "udp-server" | "udp-client" | "serial";
+  type: "tcp-server" | "tcp-client" | "udp-server" | "udp-client" | "serial" | "file";
   enabled: boolean; // 输出流可单独启用/禁用；输入流必须 enabled
-  params: TcpServerParams | TcpClientParams | UdpServerParams | UdpClientParams | SerialParams;
+  params: TcpServerParams | TcpClientParams | UdpServerParams | UdpClientParams | SerialParams | FileParams;
 }
 
 interface StreamConfig {
@@ -373,6 +392,14 @@ interface SerialParams {
   stopBits: 1 | 2; // 默认 1
   flowControl: "none" | "rtscts"; // 默认 "none"
 }
+
+interface FileParams {
+  path: string;
+  timeTag: boolean; // 对应 RTKLIB 路径选项 ::T
+  replaySpeed?: number; // 对应 ::x<speed>，默认 1
+  startOffset?: number; // 对应 ::+<off>，单位秒，默认 0
+  filePositionBytes?: 4 | 8; // 对应 ::P={4|8}，默认 4
+}
 ```
 
 ---
@@ -384,6 +411,7 @@ interface SerialParams {
 - `StreamServer.test.ts`：使用内存/mock 适配器验证启动、转发、停止逻辑。
 - `TcpAdapter.test.ts`：使用本地回环端口验证 server/client 读写。
 - `UdpAdapter.test.ts`：使用本地回环端口验证 server/client 收发。
+- `FileAdapter.test.ts`：验证普通文件读写、RTKLIB `.tag` 回放和时间戳文件输出。
 - `StreamStatistics.test.ts`：验证字节累计与码率计算。
 
 ### 9.2 集成测试
@@ -412,13 +440,13 @@ interface SerialParams {
 
 ## 11. 后续扩展路线图
 
-| 版本  | 目标                                                               |
-| ----- | ------------------------------------------------------------------ |
-| 0.0.1 | 框架搭建：1 入 N 出 TCP/UDP/Serial 透明转发 + 状态监控 + 基础 UI。 |
-| 0.0.2 | 增加 NTRIP Client / Server / Caster 支持。                         |
-| 0.0.3 | 增加文件（File）输入输出与回放控制。                               |
-| 0.1.0 | 接入 Foxglove WebSocket 输出适配器，使 Lichtblick 可直接连接。     |
-| 0.2.0 | 引入 RTCM/接收机原始格式转换（`strconv` 能力）。                   |
+| 版本  | 目标                                                                    |
+| ----- | ----------------------------------------------------------------------- |
+| 0.0.1 | 框架搭建：1 入 N 出 TCP/UDP/Serial/File 透明转发 + 状态监控 + 基础 UI。 |
+| 0.0.2 | 增加 NTRIP Client / Server / Caster 支持。                              |
+| 0.0.3 | 增强文件回放控制、路径替换关键字和自动换文件能力。                      |
+| 0.1.0 | 接入 Foxglove WebSocket 输出适配器，使 Lichtblick 可直接连接。          |
+| 0.2.0 | 引入 RTCM/接收机原始格式转换（`strconv` 能力）。                        |
 
 ---
 

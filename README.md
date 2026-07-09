@@ -5,7 +5,8 @@ Nav-Bridge 是一个独立的 Electron 桌面应用，用于把外部 GNSS / 导
 ## 当前能力
 
 - **透明转发：** 从 1 路输入读取原始字节，并写入多个输出。
-- **传输类型：** 支持 TCP Server、TCP Client、UDP Server、UDP Client 和 Serial。
+- **传输类型：** 支持 TCP Server、TCP Client、UDP Server、UDP Client、Serial 和 File。
+- **文件回放：** File 输入/输出支持 RTKLIB 风格 `.tag` 时间戳文件，可用于按采集节奏回放原始数据。
 - **运行监控：** 展示输入和每路输出的连接状态、累计字节数和实时 bps。
 - **桌面 UI：** 基于 Electron、React 18 和 MUI 7。
 - **配置持久化：** 使用 `electron-store` 保存用户配置。
@@ -14,7 +15,6 @@ Nav-Bridge 是一个独立的 Electron 桌面应用，用于把外部 GNSS / 导
 ## 不在当前版本范围内
 
 - NTRIP Client / Server / Caster
-- 文件输入输出和回放控制
 - RTCM / 接收机原始格式转换
 - NMEA GGA 请求、周期命令、relay-back
 - Foxglove WebSocket 输出适配器
@@ -92,8 +92,8 @@ src/
 
 ## 文档
 
-- [设计方案](./doc/design.md)
-- [实现架构](./doc/architecture.md)
+- [设计方案](./docs/design.md)
+- [实现架构](./docs/architecture.md)
 
 ## 测试覆盖
 
@@ -102,6 +102,7 @@ src/
 - `StreamServer` 的启动、转发、停止和启动失败回滚。
 - TCP Server 输入和 TCP Client 输出。
 - UDP Server 输入、UDP Client 输出和绑定失败。
+- File 输入/输出和 RTKLIB `.tag` 时间戳回放。
 - 流方向约束。
 - 配置参数校验。
 - 字节统计和 bps 计算。

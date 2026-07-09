@@ -6,7 +6,7 @@
 
 ## 1. 架构目标
 
-Nav-Bridge 当前实现以「实时字节流转发」为核心目标。系统需要在 Electron 主进程中处理 TCP、UDP 和 Serial I/O，避免渲染进程阻塞；渲染进程只负责配置、状态展示和用户操作。
+Nav-Bridge 当前实现以「实时字节流转发」为核心目标。系统需要在 Electron 主进程中处理 TCP、UDP、Serial 和 File I/O，避免渲染进程阻塞；渲染进程只负责配置、状态展示和用户操作。
 
 本阶段不解析 GNSS 数据内容，也不修改 Nav-Tools-Lichtblick。Nav-Bridge 只提供透明的原始字节输入和输出通道。
 
@@ -33,10 +33,10 @@ Nav-Bridge 当前实现以「实时字节流转发」为核心目标。系统需
 │ - ConfigStore：配置持久化                                   │
 │ - validateStreamConfig：运行时配置校验                      │
 │ - StreamServer：1 入 N 出转发核心                           │
-│ - TcpAdapter / UdpAdapter / SerialAdapter：传输适配器        │
+│ - TcpAdapter / UdpAdapter / SerialAdapter / FileAdapter：传输适配器 │
 └───────────────────────────────┬────────────────────────────┘
                                 │
-                         TCP / UDP / Serial
+                         TCP / UDP / Serial / File
 ```
 
 ## 3. 核心数据流
@@ -48,7 +48,7 @@ Nav-Bridge 当前实现以「实时字节流转发」为核心目标。系统需
 3. 转发成功后更新 `StreamStatistics`。
 4. 状态变化通过 `IpcBridge` 推送到渲染进程。
 
-渲染进程不会直接接触 TCP、UDP 或 Serial 句柄。
+渲染进程不会直接接触 TCP、UDP、Serial 或 File 句柄。
 
 ## 4. 主进程模块
 
@@ -105,12 +105,20 @@ interface StreamAdapter {
 - `TcpAdapter`：基于 Node.js `net`，支持 TCP Server 和 TCP Client。
 - `UdpAdapter`：基于 Node.js `dgram`，支持 UDP Server 输入和 UDP Client 输出。
 - `SerialAdapter`：基于 `serialport`，支持串口读写。
+- `FileAdapter`：基于 Node.js `fs/promises`，支持普通文件读写和 RTKLIB `.tag` 时间戳回放。
 
 方向约束：
 
 - UDP Server 仅允许作为输入。
 - UDP Client 仅允许作为输出。
-- TCP Server、TCP Client 和 Serial 可用于输入或输出。
+- TCP Server、TCP Client、Serial 和 File 可用于输入或输出。
+
+File time tag 兼容策略：
+
+- 数据文件路径为 `path`，时间戳文件路径为 `${path}.tag`。
+- `.tag` 头部为 64 字节 `TIMETAG RTKLIB ...`，紧跟 4 字节时间秒和 8 字节小数秒。
+- 后续记录为 `tick(uint32) + fpos(uint32/uint64)`，`fpos` 字节数由 `filePositionBytes` 控制。
+- 输入回放行为按 RTKLIB `readfile()`：打开后先读取第一条 tag 记录释放第一段数据，之后按 tick 推进；tag 记录为空时退化为读完整文件。
 
 ### 4.4 `QueuedReads`
 
@@ -151,6 +159,7 @@ interface StreamAdapter {
 - 端口必须在 `0..65535` 范围内。
 - TCP / UDP Client 必须提供非空 host。
 - Serial 参数必须满足 `serialport` 支持的基础范围。
+- File 必须提供非空 path；`timeTag` 必须为布尔值；`replaySpeed`、`startOffset` 和 `filePositionBytes` 必须在可用范围内。
 
 ## 6. 渲染进程结构
 
@@ -213,6 +222,7 @@ interface NavBridgeAPI {
 - `StreamServer`：转发、多输出、启动失败回滚。
 - `TcpAdapter`：TCP Server 输入、TCP Client 输出。
 - `UdpAdapter`：UDP Server 输入、UDP Client 输出、端口绑定失败。
+- `FileAdapter`：普通文件输入、RTKLIB `.tag` 回放、time tag 输出和旧 tag 清理。
 - `createAdapter`：方向约束。
 - `validateStreamConfig`：配置边界。
 - `StreamStatistics`：累计字节数和 bps。
@@ -229,7 +239,8 @@ interface NavBridgeAPI {
 - TCP Server 当前只保留最后一个连接的 socket。
 - UDP 状态仍是近似状态，不代表真实连接。
 - Serial 自动测试依赖虚拟串口或 mock binding，当前未纳入默认测试。
-- 还未实现 NTRIP、File 和 Foxglove WebSocket。
+- 还未实现 NTRIP 和 Foxglove WebSocket。
+- File 已支持基本读写和 RTKLIB `.tag`，但暂未支持 RTKLIB `::S=` 自动换文件和时间路径替换关键字。
 - 输出失败不会自动重连，后续版本需要补齐连接恢复策略。
 
 ## 11. 后续演进
@@ -238,6 +249,31 @@ interface NavBridgeAPI {
 
 1. 增加 Foxglove WebSocket 输出适配器，让 Lichtblick 可直接连接。
 2. 增加 NTRIP Client / Server / Caster。
-3. 增加文件输入输出和回放控制。
+3. 增强文件回放控制、路径替换关键字和自动换文件能力。
 4. 引入 RTCM / 原始接收机格式解析。
 5. 增加 UI 自动串口扫描和连接恢复策略。
+
+## 12. 架构边界补充
+
+### 12.1 配置事实源
+
+运行配置以主进程 `ConfigStore` 为单一事实源。渲染进程在启动时通过 `window.navBridge.loadConfig()` 读取配置，用户修改后通过 `window.navBridge.saveConfig(config)` 写回主进程。
+
+渲染进程不再使用 `localStorage` 保存业务配置，避免与 `electron-store` 形成两个配置来源。`localStorage` 仅保留给主题模式等纯 UI 偏好。
+
+### 12.2 共享选项约束
+
+`StreamOptions` 的边界、默认值和 UI 清洗逻辑集中在 `src/shared/streamOptions.ts`：
+
+- 渲染进程表单通过该模块清洗输入值。
+- 主进程配置校验通过同一模块检查运行期边界。
+- 后续新增选项时，应先扩展共享约束，再接入 UI 和主进程校验。
+
+### 12.3 后续拆分方向
+
+`IpcBridge` 当前仍同时承载流生命周期、配置、窗口控制和监控窗口入口。该结构对当前规模可接受，但后续继续扩展时建议拆分为：
+
+- `StreamBridge`：启动、停止、状态、日志和数据。
+- `ConfigBridge`：配置读取、保存、导出和迁移。
+- `WindowBridge`：窗口最小化、关闭、置顶和 resize。
+- `MonitorBridge`：监控窗口生命周期和主进程到监控窗口的数据推送。
