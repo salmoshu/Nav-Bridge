@@ -89,4 +89,19 @@ describe("TcpAdapter", () => {
     await output.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
+
+  it("does not throw when the TCP server is unavailable in output mode", async () => {
+    // Use an address that is not accepting connections.
+    const output = new TcpAdapter("tcp-output", "output", {
+      type: "tcp-client",
+      params: { host: "127.0.0.1", port: 0 }
+    });
+    await expect(output.open()).resolves.toBeUndefined();
+    expect(output.getStatus().status).not.toBe("error");
+
+    // Writing while disconnected should not throw.
+    await expect(output.write(Buffer.from("ignored"))).resolves.toBeUndefined();
+
+    await output.close();
+  });
 });

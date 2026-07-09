@@ -19,6 +19,7 @@ export class TcpAdapter implements StreamAdapter {
   private status: StreamAdapterStatus["status"] = "idle";
   private error?: string;
   private readonly reads = new QueuedReads();
+  private reconnectTimer?: NodeJS.Timeout;
 
   public constructor(
     public readonly id: string,
@@ -45,6 +46,10 @@ export class TcpAdapter implements StreamAdapter {
   }
 
   public async close(): Promise<void> {
+    if (this.reconnectTimer != undefined) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
     this.reads.close();
     this.socket?.destroy();
     this.socket = undefined;
@@ -70,6 +75,10 @@ export class TcpAdapter implements StreamAdapter {
         throw new Error(`${this.id} has no active TCP clients`);
       }
       await Promise.all(sockets.map((socket) => this.writeToSocket(socket, data)));
+      return;
+    }
+    if (this.mode === "output" && (this.socket == undefined || this.socket.destroyed)) {
+      // Output client retries connection in the background; drop data while disconnected.
       return;
     }
     if (this.socket == undefined || this.socket.destroyed) {
@@ -114,6 +123,11 @@ export class TcpAdapter implements StreamAdapter {
   }
 
   private async openClient(params: TcpClientParams): Promise<void> {
+    if (this.mode === "output") {
+      await this.openOutputClient(params);
+      return;
+    }
+
     const socket = net.createConnection({ host: params.host, port: params.port });
     this.attachSocket(socket);
     await new Promise<void>((resolve, reject) => {
@@ -123,6 +137,87 @@ export class TcpAdapter implements StreamAdapter {
     if (params.connectMessage != undefined && params.connectMessage.length > 0) {
       await this.write(decodeEscapeSequences(params.connectMessage));
     }
+  }
+
+  private async openOutputClient(params: TcpClientParams): Promise<void> {
+    this.status = "connecting";
+    this.error = undefined;
+    const connected = await this.attemptOutputConnection(params);
+    if (!connected) {
+      this.scheduleOutputRetry(params);
+    }
+  }
+
+  private attemptOutputConnection(params: TcpClientParams): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (this.status === "idle") {
+        resolve(false);
+        return;
+      }
+      const socket = net.createConnection({ host: params.host, port: params.port });
+      let settled = false;
+
+      const cleanup = (): void => {
+        socket.off("connect", onConnect);
+        socket.off("error", onError);
+      };
+
+      const onConnect = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        this.attachOutputSocket(socket);
+        this.status = "connected";
+        this.error = undefined;
+        if (params.connectMessage != undefined && params.connectMessage.length > 0) {
+          this.write(decodeEscapeSequences(params.connectMessage)).catch(() => undefined);
+        }
+        resolve(true);
+      };
+
+      const onError = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        socket.destroy();
+        resolve(false);
+      };
+
+      socket.once("connect", onConnect);
+      socket.once("error", onError);
+    });
+  }
+
+  private scheduleOutputRetry(params: TcpClientParams): void {
+    this.reconnectTimer = setTimeout(() => {
+      void this.attemptOutputConnection(params).then((connected) => {
+        if (!connected && this.status !== "idle") {
+          this.scheduleOutputRetry(params);
+        }
+      });
+    }, 3000);
+  }
+
+  private attachOutputSocket(socket: net.Socket): void {
+    this.socket?.destroy();
+    this.socket = socket;
+    socket.on("error", () => {
+      socket.destroy();
+    });
+    socket.on("close", () => {
+      if (this.socket === socket) {
+        this.socket = undefined;
+      }
+      if (this.status !== "idle") {
+        this.status = "connecting";
+        const params = this.config.params as TcpClientParams;
+        this.scheduleOutputRetry(params);
+      }
+    });
   }
 
   private attachSocket(socket: net.Socket): void {
