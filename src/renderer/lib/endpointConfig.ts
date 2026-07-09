@@ -68,7 +68,7 @@ function clientEndpointDisplay(endpoint: StreamEndpoint): string {
 
 function serverEndpointDisplay(endpoint: StreamEndpoint): string {
   const params = endpoint.params as unknown as Record<string, unknown>;
-  return String(params.port ?? "");
+  return `0.0.0.0:${params.port ?? ""}`;
 }
 
 function networkEndpointDisplay(endpoint: StreamEndpoint): string {
@@ -153,7 +153,7 @@ export function endpointHost(endpoint: StreamEndpoint): string {
   switch (type) {
     case "tcp-server":
     case "udp-server":
-      return typeof params.host === "string" ? params.host : "";
+      return "0.0.0.0";
     case "tcp-client":
     case "udp-client":
       return typeof params.host === "string" ? params.host : "";
@@ -187,7 +187,7 @@ export function defaultParamsForType(type: StreamType): StreamEndpointParams {
       } satisfies FileParams;
     case "tcp-server":
     case "udp-server":
-      return { port: 2101 };
+      return { host: "0.0.0.0", port: 2101 };
     case "tcp-client":
     case "udp-client":
       return { host: "127.0.0.1", port: 2201 };

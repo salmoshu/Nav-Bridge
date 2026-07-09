@@ -106,15 +106,16 @@ describe("EndpointConfigDialog source", () => {
     expect(source).toContain("showFileDialog");
   });
 
-  it("shows only Port for TCP/UDP server endpoints", () => {
+  it("shows fixed 0.0.0.0 Host and editable Port for TCP/UDP server endpoints", () => {
     const source = readSource();
     const serverIndex = source.indexOf('draft.type === "tcp-server"');
     expect(serverIndex).toBeGreaterThanOrEqual(0);
     expect(source.indexOf('draft.type === "udp-server"')).toBeGreaterThanOrEqual(0);
-    // The Host label must appear inside the client block, before the server block.
-    const hostIndex = source.indexOf('label="Host"');
-    expect(hostIndex).toBeGreaterThanOrEqual(0);
-    expect(hostIndex).toBeLessThan(serverIndex);
+    // Server block has a disabled Host field locked to 0.0.0.0 and an editable Port field.
+    const serverHostIndex = source.indexOf('value="0.0.0.0"', serverIndex);
+    expect(serverHostIndex).toBeGreaterThanOrEqual(0);
+    expect(source.indexOf("disabled", serverIndex)).toBeGreaterThanOrEqual(0);
+    expect(source.indexOf('label="Port"', serverIndex)).toBeGreaterThanOrEqual(0);
   });
 
   it("shows Host and Port for TCP/UDP client endpoints", () => {

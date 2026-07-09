@@ -184,4 +184,8 @@ describe("MonitorApp scrolling behavior", () => {
     );
     expect(source).toMatch(/if\s*\(\s*!paused\s*\)\s*\{[\s\S]*?setDisplayStatus\(\s*status\s*\)/);
   });
+
+  it("labels the hex view as HEX", () => {
+    expect(source).toContain('{ value: "hex", label: "HEX" }');
+  });
 });

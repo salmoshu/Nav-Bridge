@@ -27,7 +27,7 @@ const levelColors: Record<LogEntry["level"], string> = {
 
 const monitorViews = [
   { value: "streams", label: "Streams" },
-  { value: "hex", label: "Hex" },
+  { value: "hex", label: "HEX" },
   { value: "ascii", label: "ASCII" },
   { value: "log", label: "Log" }
 ] as const;

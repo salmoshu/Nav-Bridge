@@ -153,14 +153,17 @@ describe("endpointGridColumns", () => {
       "<EndpointPathEditor endpoint={endpoint} disabled={disabled} onChange={onChange} />"
     );
     expect(source).toContain("function EndpointPathEditor");
-    expect(source).toContain("value={endpointPath(endpoint)}");
+    expect(source).toContain("value={displayValue}");
     expect(source).toContain('"host:port"');
     expect(source).toContain('"port@baudRate"');
     expect(source).toContain('"file path"');
+    expect(source).toContain('"port"');
     expect(source).toContain("parseClientPath");
     expect(source).toContain("parseServerPort");
     expect(source).toContain("parseSerialPath");
     expect(source).toContain("isFileEndpoint");
+    expect(source).toContain("onFocus={() => setFocused(true)}");
+    expect(source).toContain("onBlur={() => setFocused(false)}");
   });
 
   it("allows file endpoints to be edited as a plain path in the Path cell", () => {
@@ -175,7 +178,7 @@ describe("endpointGridColumns", () => {
     expect(source).toContain("params: { ...params, path: value }");
   });
 
-  it("disables endpoint editing and adding while the server is running", () => {
+  it("disables inline editing and adding while the server is running but keeps action buttons clickable", () => {
     const fs = require("node:fs") as typeof import("node:fs");
     const path = require("node:path") as typeof import("node:path");
     const source = fs.readFileSync(
@@ -188,6 +191,10 @@ describe("endpointGridColumns", () => {
     expect(source).toContain(
       "<EndpointPathEditor endpoint={endpoint} disabled={disabled} onChange={onChange} />"
     );
+    // Configure and Delete buttons remain clickable; only their icons turn gray.
+    expect(source).not.toMatch(/<IconButton\s+disabled=\{disabled\}\s+onClick=\{onConfigure\}/);
+    expect(source).not.toMatch(/<IconButton\s+disabled=\{disabled\}\s+onClick=\{onDelete\}/);
+    expect(source).toContain('color: disabled ? "text.disabled" : endpointActionIconSx.color');
   });
 
   it("keeps the status dot in the first cell and delete as the last row action", () => {

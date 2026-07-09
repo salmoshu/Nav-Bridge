@@ -1,7 +1,11 @@
 import { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { join } from "node:path";
 import { ipcChannels } from "../../shared/ipc";
-import { MAX_MONITOR_LOG_ENTRIES, pushMonitorEntry } from "../../shared/monitorLimits";
+import {
+  MAX_MONITOR_DATA_ENTRIES,
+  MAX_MONITOR_LOG_ENTRIES,
+  pushMonitorEntry
+} from "../../shared/monitorLimits";
 import type { LogEntry, StreamDataEntry, StreamStatus } from "../../shared/stream";
 
 const monitorWidth = 720;
@@ -10,6 +14,7 @@ const monitorHeight = 460;
 let monitorWindow: ElectronBrowserWindow | undefined;
 let monitorReady = false;
 const monitorLogBuffer: LogEntry[] = [];
+const monitorDataBuffer: StreamDataEntry[] = [];
 
 function flushMonitorLogs(): void {
   if (monitorWindow == undefined || monitorWindow.webContents.isDestroyed()) {
@@ -17,6 +22,15 @@ function flushMonitorLogs(): void {
   }
   for (const log of monitorLogBuffer) {
     monitorWindow.webContents.send(ipcChannels.log, log);
+  }
+}
+
+function flushMonitorData(): void {
+  if (monitorWindow == undefined || monitorWindow.webContents.isDestroyed()) {
+    return;
+  }
+  for (const entry of monitorDataBuffer) {
+    monitorWindow.webContents.send(ipcChannels.data, entry);
   }
 }
 
@@ -44,6 +58,7 @@ export function createMonitorWindow(): ElectronBrowserWindow {
   monitorWindow.webContents.once("did-finish-load", () => {
     monitorReady = true;
     flushMonitorLogs();
+    flushMonitorData();
   });
 
   monitorWindow.on("closed", () => {
@@ -84,7 +99,10 @@ export function sendMonitorLog(log: LogEntry): void {
 }
 
 export function sendMonitorData(entry: StreamDataEntry): void {
-  if (monitorWindow != undefined && !monitorWindow.webContents.isDestroyed()) {
+  const next = pushMonitorEntry(monitorDataBuffer, entry, MAX_MONITOR_DATA_ENTRIES);
+  monitorDataBuffer.splice(0, monitorDataBuffer.length, ...next);
+
+  if (monitorReady && monitorWindow != undefined && !monitorWindow.webContents.isDestroyed()) {
     monitorWindow.webContents.send(ipcChannels.data, entry);
   }
 }

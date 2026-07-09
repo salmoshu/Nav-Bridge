@@ -141,13 +141,22 @@ export function EndpointConfigDialog({
           )}
 
           {(draft.type === "tcp-server" || draft.type === "udp-server") && (
-            <TextField
-              label="Port"
-              type="number"
-              value={Number(params.port ?? 0)}
-              onChange={(event) => updateParam("port", Number(event.target.value))}
-              fullWidth
-            />
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Host"
+                value="0.0.0.0"
+                disabled
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="Port"
+                type="number"
+                value={Number(params.port ?? 0)}
+                onChange={(event) => updateParam("port", Number(event.target.value))}
+                sx={{ minWidth: 120 }}
+              />
+            </Stack>
           )}
 
           {draft.type === "tcp-client" && (

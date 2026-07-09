@@ -1,6 +1,6 @@
 {
   "name": "nav-bridge",
-  "version": "0.0.1-20260708",
+  "version": "0.1.0-20260709",
   "private": true,
   "description": "A desktop stream bridge for GNSS/navigation data.",
   "main": "out/main/index.js",

@@ -4,15 +4,13 @@ export function formatMetricLabel(index: number): string {
   return `(${index})`;
 }
 
+const serverTypes: ReadonlySet<StreamMetric["type"]> = new Set(["tcp-server", "udp-server"]);
+
 export function formatMetricValue(metric: StreamMetric, index: number): string {
   if (index === 0 && metric.status === "connected" && metric.uptime != undefined) {
     return `${metric.uptime.toFixed(1)}s`;
   }
-  if (
-    (metric.type === "tcp-server" || metric.type === "udp-server") &&
-    metric.status === "connected" &&
-    metric.clients != undefined
-  ) {
+  if (serverTypes.has(metric.type) && metric.status === "connected" && metric.clients != undefined) {
     return `${metric.clients}client${metric.clients === 1 ? "" : "s"}`;
   }
   return metric.status;
@@ -30,12 +28,12 @@ export function buildStatusLine(status?: StreamStatus, inputUptime?: number): st
   const items: string[] = [];
   items.push(`${formatMetricLabel(0)}${formatMetricValue(inputMetric, 0)}`);
   status.outputs.forEach((output, index) => {
-    items.push(`${formatMetricLabel(index + 1)}${formatMetricValue(output, index + 1)}`);
+    if (serverTypes.has(output.type)) {
+      items.push(`${formatMetricLabel(index + 1)}${formatMetricValue(output, index + 1)}`);
+    }
   });
   return items.join("");
 }
-
-const serverTypes: ReadonlySet<StreamMetric["type"]> = new Set(["tcp-server", "udp-server"]);
 
 function formatCompactSegment(index: number, metric: StreamMetric): string {
   const prefix = `(${index})`;

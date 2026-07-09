@@ -84,9 +84,19 @@ describe("buildStatusLine", () => {
     expect(buildStatusLine(status)).toBe("(0)25.0s");
   });
 
-  it("shows raw status for idle and connecting outputs", () => {
-    const status = makeStatus({ status: "idle" }, [{ status: "connecting" }]);
+  it("shows raw status for idle and connecting server outputs", () => {
+    const status = makeStatus({ status: "idle" }, [
+      { type: "tcp-server", status: "connecting" }
+    ]);
     expect(buildStatusLine(status)).toBe("(0)idle(1)connecting");
+  });
+
+  it("hides client outputs from the status line", () => {
+    const status = makeStatus({ status: "connected", uptime: 10 }, [
+      { type: "tcp-client", status: "connected" },
+      { type: "udp-client", status: "connecting" }
+    ]);
+    expect(buildStatusLine(status)).toBe("(0)10.0s");
   });
 
   it("shows waiting for TCP server outputs with data but no clients", () => {

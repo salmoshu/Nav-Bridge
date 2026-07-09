@@ -23,6 +23,26 @@ describe("MonitorWindow log buffering", () => {
   });
 });
 
+describe("MonitorWindow data buffering", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "src/main/monitor/MonitorWindow.ts"), "utf-8");
+
+  it("keeps a bounded data buffer for replay", () => {
+    expect(source).toContain("monitorDataBuffer");
+    expect(source).toContain("MAX_MONITOR_DATA_ENTRIES");
+    expect(source).toContain("pushMonitorEntry");
+  });
+
+  it("flushes buffered data after the window finishes loading", () => {
+    expect(source).toContain('"did-finish-load"');
+    expect(source).toContain("flushMonitorData");
+    expect(source).toContain("monitorReady = true");
+  });
+
+  it("only sends data when the monitor window is ready", () => {
+    expect(source).toMatch(/if\s*\(\s*monitorReady\s*&&/);
+  });
+});
+
 describe("main process lifecycle logs", () => {
   const source = fs.readFileSync(path.join(repoRoot, "src/main/index.ts"), "utf-8");
 

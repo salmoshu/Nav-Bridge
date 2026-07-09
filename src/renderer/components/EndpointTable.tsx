@@ -191,7 +191,7 @@ export function EndpointTable({
           <span>Path</span>
           <span style={{ whiteSpace: "nowrap" }}>
             Bytes
-            <span style={{ fontSize: "0.55rem", opacity: 0.7, marginLeft: 2 }}>({bytesUnit})</span>
+            <span style={{ opacity: 0.7, marginLeft: 2 }}>({bytesUnit})</span>
           </span>
           <span>Bps</span>
           <span />
@@ -222,7 +222,14 @@ export function EndpointTable({
         ))}
 
         {canAddOutput && (
-          <Box sx={{ minHeight: ENDPOINT_TABLE_ADD_BUTTON_HEIGHT }}>
+          <Box
+            sx={{
+              minHeight: ENDPOINT_TABLE_ADD_BUTTON_HEIGHT,
+              display: "flex",
+              alignItems: "center",
+              mt: 0.25
+            }}
+          >
             <Button
               startIcon={<AddIcon />}
               onClick={addOutput}
@@ -234,9 +241,9 @@ export function EndpointTable({
             </Button>
           </Box>
         )}
-
-        <div ref={bottomRef} />
       </Stack>
+
+      <div ref={bottomRef} />
 
       {editingEndpoint != undefined && (
         <EndpointConfigDialog
@@ -280,7 +287,9 @@ function parseClientPath(value: string): { host: string; port: number } | undefi
 }
 
 function parseServerPort(value: string): number | undefined {
-  const port = Number.parseInt(value, 10);
+  const lastColon = value.lastIndexOf(":");
+  const portText = lastColon === -1 ? value : value.slice(lastColon + 1);
+  const port = Number.parseInt(portText, 10);
   if (Number.isNaN(port)) {
     return undefined;
   }
@@ -309,6 +318,8 @@ function EndpointPathEditor({
   disabled: boolean;
   onChange: (endpoint: StreamEndpoint) => void;
 }) {
+  const [focused, setFocused] = useState(false);
+
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
     if (isServerEndpoint(endpoint)) {
@@ -362,14 +373,21 @@ function EndpointPathEditor({
         ? "file path"
         : "port@baudRate";
 
+  const displayValue =
+    isServerEndpoint(endpoint) && focused
+      ? String((endpoint.params as { port: number }).port)
+      : endpointPath(endpoint);
+
   return (
     <TextField
       variant="standard"
       size="small"
       disabled={disabled}
-      value={endpointPath(endpoint)}
+      value={displayValue}
       placeholder={placeholder}
       onChange={handleChange}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       InputProps={{ disableUnderline: true }}
       inputProps={{ spellCheck: false }}
       sx={{ ...pathInputSx, minWidth: 0 }}
@@ -474,14 +492,24 @@ function EndpointRow({
       </Typography>
       <Stack direction="row" spacing={0.25} alignItems="center" justifyContent="flex-end">
         <Tooltip title="Configure">
-          <IconButton disabled={disabled} onClick={onConfigure} sx={endpointActionButtonSx}>
-            <SettingsIcon sx={endpointActionIconSx} />
+          <IconButton onClick={onConfigure} sx={endpointActionButtonSx}>
+            <SettingsIcon
+              sx={{
+                ...endpointActionIconSx,
+                color: disabled ? "text.disabled" : endpointActionIconSx.color
+              }}
+            />
           </IconButton>
         </Tooltip>
         {onDelete != undefined && (
           <Tooltip title="Delete output">
-            <IconButton disabled={disabled} onClick={onDelete} sx={endpointActionButtonSx}>
-              <DeleteIcon sx={endpointActionIconSx} />
+            <IconButton onClick={onDelete} sx={endpointActionButtonSx}>
+              <DeleteIcon
+                sx={{
+                  ...endpointActionIconSx,
+                  color: disabled ? "text.disabled" : endpointActionIconSx.color
+                }}
+              />
             </IconButton>
           </Tooltip>
         )}
