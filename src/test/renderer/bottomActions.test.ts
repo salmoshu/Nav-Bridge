@@ -1,4 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { bottomActionIds, getBottomActionLabel, getBottomActions } from "../../renderer/lib/bottomActions";
+
+const repoRoot = path.resolve(__dirname, "../../..");
 
 describe("bottomActions", () => {
   describe("getBottomActionLabel", () => {
@@ -43,6 +47,22 @@ describe("bottomActions", () => {
         expect(actions.find((a) => a.id === "options")?.disabled).toBe(false);
         expect(actions.find((a) => a.id === "exit")?.disabled).toBe(false);
       }
+    });
+  });
+
+  describe("BottomActionBar component", () => {
+    const source = fs.readFileSync(
+      path.join(repoRoot, "src/renderer/components/BottomActionBar.tsx"),
+      "utf-8"
+    );
+
+    it("accepts stream status and renders it in an independent status area", () => {
+      expect(source).toContain("status?: StreamStatus");
+      expect(source).toMatch(/buildStatusLine\(\s*status\s*(,\s*[^)]+)?\s*\)/);
+      expect(source).toContain("<Paper");
+      expect(source).toContain("background.default");
+      expect(source).toContain('direction="row"');
+      expect(source).toContain('justifyContent="space-between"');
     });
   });
 });

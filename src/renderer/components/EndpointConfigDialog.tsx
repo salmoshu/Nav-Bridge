@@ -1,3 +1,4 @@
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import {
   Button,
   Dialog,
@@ -5,14 +6,17 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
   Switch,
-  TextField
+  TextField,
+  Tooltip
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import type { SerialPortInfo } from "../../shared/ipc";
-import type { SerialParams, StreamEndpoint, StreamMode, StreamType } from "../../shared/stream";
+import type { FileParams, SerialParams, StreamEndpoint, StreamMode, StreamType } from "../../shared/stream";
 import {
   allowedEndpointTypes,
   baudRates,
@@ -21,6 +25,7 @@ import {
   flowControlOptions,
   formatEndpointType,
   formatSerialPortLabel,
+  isFileEndpoint,
   isNetworkEndpoint,
   isSerialEndpoint,
   parityOptions,
@@ -33,6 +38,8 @@ import {
   compactDialogTitleSx,
   denseSelectMenuProps
 } from "../lib/compactUi";
+
+const replaySpeedOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10];
 
 export function EndpointConfigDialog({
   open,
@@ -72,9 +79,17 @@ export function EndpointConfigDialog({
   const types = allowedEndpointTypes(mode);
   const params = draft.params as unknown as Record<string, unknown>;
   const serialParams = draft.params as SerialParams;
+  const fileParams = draft.params as FileParams;
 
   const updateParam = (key: string, value: unknown): void => {
     setDraft({ ...draft, params: { ...draft.params, [key]: value } });
+  };
+
+  const handleBrowseFile = async (): Promise<void> => {
+    const selected = await window.navBridge.showFileDialog(mode, fileParams.path || undefined);
+    if (selected != undefined) {
+      updateParam("path", selected);
+    }
   };
 
   const handleTypeChange = (type: StreamType): void => {
@@ -139,6 +154,85 @@ export function EndpointConfigDialog({
             />
           )}
 
+          {isFileEndpoint(draft) && (
+            <>
+              <TextField
+                label="File path"
+                fullWidth
+                value={fileParams.path ?? ""}
+                onChange={(event) => updateParam("path", event.target.value)}
+                InputLabelProps={{ shrink: true }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="Browse">
+                        <IconButton onClick={() => void handleBrowseFile()} edge="end" size="small">
+                          <FolderOpenIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </InputAdornment>
+                  )
+                }}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={Boolean(fileParams.timeTag)}
+                    onChange={(event) => updateParam("timeTag", event.target.checked)}
+                  />
+                }
+                label="Time Tag"
+              />
+              {fileParams.timeTag && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ rowGap: 1 }}>
+                  {mode === "input" && (
+                    <>
+                      <TextField
+                        select
+                        label="Replay speed"
+                        value={Number(fileParams.replaySpeed ?? 1)}
+                        onChange={(event) => updateParam("replaySpeed", Number(event.target.value))}
+                        sx={{ minWidth: 120 }}
+                        SelectProps={{ MenuProps: denseSelectMenuProps }}
+                        InputLabelProps={{ shrink: true }}
+                      >
+                        {replaySpeedOptions.map((speed) => (
+                          <MenuItem key={speed} value={speed}>
+                            x{speed}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        label="Start offset (s)"
+                        type="number"
+                        value={Number(fileParams.startOffset ?? 0)}
+                        onChange={(event) => updateParam("startOffset", Number(event.target.value))}
+                        sx={{ minWidth: 130 }}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </>
+                  )}
+                  <TextField
+                    select
+                    label="File position bytes"
+                    value={fileParams.filePositionBytes ?? 4}
+                    onChange={(event) => updateParam("filePositionBytes", Number(event.target.value))}
+                    sx={{ minWidth: 150 }}
+                    SelectProps={{ MenuProps: denseSelectMenuProps }}
+                    InputLabelProps={{ shrink: true }}
+                  >
+                    {[4, 8].map((bytes) => (
+                      <MenuItem key={bytes} value={bytes}>
+                        {bytes}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              )}
+            </>
+          )}
+
           {isSerialEndpoint(draft) && (
             <>
               <TextField
@@ -149,8 +243,7 @@ export function EndpointConfigDialog({
                 onChange={(event) => updateParam("port", event.target.value)}
                 error={serialPortsError != undefined}
                 helperText={
-                  serialPortsError ??
-                  (serialPorts.length === 0 ? "No serial ports detected." : undefined)
+                  serialPortsError ?? (serialPorts.length === 0 ? "No serial ports detected." : undefined)
                 }
                 disabled={serialPortsLoading}
                 SelectProps={{

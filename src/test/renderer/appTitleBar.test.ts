@@ -19,11 +19,14 @@ describe("AppTitleBar", () => {
   it("renders the logo placeholder and version text next to the title", () => {
     expect(source).toContain("ElectronLogoPlaceholder");
     expect(source).toContain("__APP_VERSION__");
+    expect(source).toContain("V{__APP_VERSION__}");
     expect(source).not.toContain('APP_VERSION = "V0.0.1-20260708"');
   });
 
   it("uses icon color only for the active always-on-top state without a circular background", () => {
-    expect(source).toContain('theme.palette.mode === "dark" ? "common.white" : "common.black"');
+    expect(source).toContain('theme.palette.mode === "dark"');
+    expect(source).toContain('"common.white"');
+    expect(source).toContain('"common.black"');
     expect(source).not.toContain('bgcolor: isAlwaysOnTop && alwaysOnTop ? "action.selected"');
     expect(source).toContain('bgcolor: "transparent"');
   });

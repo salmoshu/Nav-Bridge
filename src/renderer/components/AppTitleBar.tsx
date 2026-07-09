@@ -73,7 +73,7 @@ export function AppTitleBar({
             Nav-Bridge
           </Typography>
           <Typography component="span" variant="caption" color="text.secondary" fontSize="0.6875rem">
-            v{__APP_VERSION__}
+            V{__APP_VERSION__}
           </Typography>
         </Box>
       </Stack>
@@ -108,7 +108,9 @@ export function AppTitleBar({
                   p: 0.375,
                   color:
                     isAlwaysOnTop && alwaysOnTop
-                      ? theme.palette.mode === "dark" ? "common.white" : "common.black"
+                      ? theme.palette.mode === "dark"
+                        ? "common.white"
+                        : "common.black"
                       : "text.primary",
                   bgcolor: "transparent",
                   "&:hover": {

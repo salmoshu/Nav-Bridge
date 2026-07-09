@@ -1,5 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import ArticleIcon from "@mui/icons-material/Article";
 import CircleIcon from "@mui/icons-material/Circle";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -17,28 +16,60 @@ import {
   Typography
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { useEffect, useRef, useState } from "react";
-import type { StreamConfig, StreamEndpoint, StreamMode, StreamStatus, StreamType } from "../../shared/stream";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import type {
+  FileParams,
+  SerialParams,
+  StreamConfig,
+  StreamEndpoint,
+  StreamMode,
+  StreamStatus,
+  StreamType
+} from "../../shared/stream";
 import {
   allowedEndpointTypes,
   createDefaultEndpoint,
   createEndpointWithType,
-  endpointInfo,
-  formatEndpointType
+  endpointPath,
+  formatEndpointType,
+  isFileEndpoint,
+  isNetworkEndpoint
 } from "../lib/endpointConfig";
 import { buildStatusMap } from "../lib/endpointStatus";
+import {
+  ENDPOINT_ROW_HEIGHT,
+  ENDPOINT_TABLE_ADD_BUTTON_HEIGHT,
+  ENDPOINT_TABLE_COLUMN_HEADER_HEIGHT,
+  ENDPOINT_TABLE_HEADER_HEIGHT
+} from "../../shared/windowMetrics";
+import { formatBytes, getByteUnit } from "../lib/formatBytes";
 import { useSerialPorts } from "../hooks/useSerialPorts";
 import { EndpointConfigDialog } from "./EndpointConfigDialog";
+
+const pathInputSx = {
+  "& .MuiInput-root": {
+    height: 40,
+    fontSize: "0.7rem"
+  },
+  "& .MuiInput-input": {
+    py: 0,
+    px: 0.75,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  }
+} as const;
 
 const statusColor = {
   idle: "#8a8f98",
   connecting: "#f5c542",
   connected: "#66d17a",
+  waiting: "#f5c542",
   error: "#ff6b6b"
 } as const;
 
-const MAX_OUTPUTS = 7;
-export const endpointGridColumns = "20px 28px 48px 104px minmax(0,1fr) 28px 28px 80px";
+const MAX_OUTPUTS = 5;
+export const endpointGridColumns = "20px 28px 36px 110px minmax(124px,1fr) 72px 32px 64px";
 export const endpointActionButtonSx = {
   p: 0,
   width: 20,
@@ -54,20 +85,24 @@ export function EndpointTable({
   status,
   onChange,
   onExport,
-  onShowSystemLogs,
-  onShowData
+  onShowSystemLogs
 }: {
   config: StreamConfig;
   status?: StreamStatus;
   onChange: (config: StreamConfig) => void;
   onExport: () => void;
   onShowSystemLogs: () => void;
-  onShowData: (endpointId: string) => void;
 }) {
   const { ports, loading: serialPortsLoading, error: serialPortsError, refresh } = useSerialPorts();
   const statusMap = buildStatusMap(status);
+  const maxBytes = Math.max(
+    statusMap[config.input.id]?.bytes ?? 0,
+    ...config.outputs.map((output) => statusMap[output.id]?.bytes ?? 0)
+  );
+  const bytesUnit = getByteUnit(maxBytes);
   const [editingId, setEditingId] = useState<string>();
   const canAddOutput = config.outputs.length < MAX_OUTPUTS;
+  const disabled = status?.running ?? false;
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousOutputCount = useRef(config.outputs.length);
 
@@ -112,14 +147,19 @@ export function EndpointTable({
   return (
     <Paper variant="outlined" sx={{ p: 1 }}>
       <Stack spacing={0.75}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ minHeight: ENDPOINT_TABLE_HEADER_HEIGHT }}
+        >
           <Typography variant="subtitle2" fontWeight={600} fontSize="0.8125rem">
             Endpoints
           </Typography>
           <Stack direction="row" spacing={0.25} alignItems="center">
-            <Tooltip title="View system logs">
+            <Tooltip title="View stream monitor">
               <IconButton onClick={onShowSystemLogs}>
-                <ArticleIcon fontSize="small" sx={endpointActionIconSx} />
+                <DataObjectIcon fontSize="small" sx={endpointActionIconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Export configuration">
@@ -139,16 +179,20 @@ export function EndpointTable({
             typography: "caption",
             color: "text.secondary",
             px: 0.5,
-            fontSize: "0.65rem"
+            fontSize: "0.65rem",
+            minHeight: ENDPOINT_TABLE_COLUMN_HEADER_HEIGHT
           }}
         >
           <span />
           <span>#</span>
           <span>Role</span>
           <span>Type</span>
-          <span>Info</span>
-          <span>Bytes</span>
-          <span>BPS</span>
+          <span>Path</span>
+          <span style={{ whiteSpace: "nowrap" }}>
+            Bytes
+            <span style={{ fontSize: "0.55rem", opacity: 0.7, marginLeft: 2 }}>({bytesUnit})</span>
+          </span>
+          <span>Bps</span>
           <span />
         </Box>
 
@@ -157,9 +201,9 @@ export function EndpointTable({
           mode="input"
           endpoint={config.input}
           metric={statusMap[config.input.id]}
+          disabled={disabled}
           onChange={updateInput}
           onConfigure={() => setEditingId(config.input.id)}
-          onShowData={() => onShowData(config.input.id)}
         />
 
         {config.outputs.map((output, index) => (
@@ -169,19 +213,20 @@ export function EndpointTable({
             mode="output"
             endpoint={output}
             metric={statusMap[output.id]}
+            disabled={disabled}
             onChange={(endpoint) => updateOutput(index, endpoint)}
             onConfigure={() => setEditingId(output.id)}
             onDelete={() => removeOutput(index)}
-            onShowData={() => onShowData(output.id)}
           />
         ))}
 
         {canAddOutput && (
-          <Box>
+          <Box sx={{ minHeight: ENDPOINT_TABLE_ADD_BUTTON_HEIGHT }}>
             <Button
               startIcon={<AddIcon />}
               onClick={addOutput}
               size="small"
+              disabled={disabled}
               sx={{ fontSize: "0.75rem", py: 0.125, textTransform: "none" }}
             >
               Add Output
@@ -220,24 +265,115 @@ export function EndpointTable({
   );
 }
 
+function parseNetworkPath(value: string): { host: string; port: number } | undefined {
+  const lastColon = value.lastIndexOf(":");
+  if (lastColon === -1) {
+    return undefined;
+  }
+  const host = value.slice(0, lastColon);
+  const port = Number.parseInt(value.slice(lastColon + 1), 10);
+  if (Number.isNaN(port)) {
+    return undefined;
+  }
+  return { host, port };
+}
+
+function parseSerialPath(value: string): { port: string; baudRate: number } | undefined {
+  const atIndex = value.lastIndexOf("@");
+  if (atIndex === -1) {
+    return undefined;
+  }
+  const port = value.slice(0, atIndex);
+  const baudRate = Number.parseInt(value.slice(atIndex + 1), 10);
+  if (Number.isNaN(baudRate)) {
+    return undefined;
+  }
+  return { port, baudRate };
+}
+
+function EndpointPathEditor({
+  endpoint,
+  disabled,
+  onChange
+}: {
+  endpoint: StreamEndpoint;
+  disabled: boolean;
+  onChange: (endpoint: StreamEndpoint) => void;
+}) {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const value = event.target.value;
+    if (isNetworkEndpoint(endpoint)) {
+      const parsed = parseNetworkPath(value);
+      if (parsed == undefined) {
+        return;
+      }
+      const params = endpoint.params as { host?: string; port: number };
+      onChange({
+        ...endpoint,
+        params: { ...params, host: parsed.host, port: parsed.port }
+      });
+      return;
+    }
+
+    if (isFileEndpoint(endpoint)) {
+      const params = endpoint.params as FileParams;
+      onChange({
+        ...endpoint,
+        params: { ...params, path: value }
+      });
+      return;
+    }
+
+    const parsed = parseSerialPath(value);
+    if (parsed == undefined) {
+      return;
+    }
+    const params = endpoint.params as SerialParams;
+    onChange({
+      ...endpoint,
+      params: { ...params, port: parsed.port, baudRate: parsed.baudRate }
+    });
+  };
+
+  const placeholder = isNetworkEndpoint(endpoint)
+    ? "host:port"
+    : isFileEndpoint(endpoint)
+      ? "file path"
+      : "port@baudRate";
+
+  return (
+    <TextField
+      variant="standard"
+      size="small"
+      disabled={disabled}
+      value={endpointPath(endpoint)}
+      placeholder={placeholder}
+      onChange={handleChange}
+      InputProps={{ disableUnderline: true }}
+      inputProps={{ spellCheck: false }}
+      sx={{ ...pathInputSx, minWidth: 0 }}
+    />
+  );
+}
+
 function EndpointRow({
   index,
   mode,
   endpoint,
   metric,
+  disabled,
   onChange,
   onConfigure,
-  onDelete,
-  onShowData
+  onDelete
 }: {
   index: number;
   mode: StreamMode;
   endpoint: StreamEndpoint;
   metric: { status: string; bytes: number; bps: number };
+  disabled: boolean;
   onChange: (endpoint: StreamEndpoint) => void;
   onConfigure: () => void;
   onDelete?: () => void;
-  onShowData: () => void;
 }) {
   const theme = useTheme();
   const types = allowedEndpointTypes(mode);
@@ -252,7 +388,8 @@ function EndpointRow({
         gap: 1,
         alignItems: "center",
         px: 0.5,
-        py: 0.5,
+        height: ENDPOINT_ROW_HEIGHT,
+        boxSizing: "border-box",
         borderBottom: 1,
         borderColor: "divider"
       }}
@@ -277,10 +414,11 @@ function EndpointRow({
         {index}
       </Box>
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem" }}>
-        {isInput ? "Input" : "Output"}
+        {isInput ? "In" : "Out"}
       </Typography>
       <TextField
         select
+        disabled={disabled}
         value={endpoint.type}
         onChange={(event) => onChange(createEndpointWithType(endpoint, event.target.value as StreamType))}
         sx={{ minWidth: 0 }}
@@ -306,29 +444,22 @@ function EndpointRow({
           </MenuItem>
         ))}
       </TextField>
-      <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0, fontSize: "0.7rem" }}>
-        {endpointInfo(endpoint)}
-      </Typography>
+      <EndpointPathEditor endpoint={endpoint} disabled={disabled} onChange={onChange} />
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
-        {metric.bytes.toLocaleString()}
+        {formatBytes(metric.bytes)}
       </Typography>
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }}>
         {metric.bps.toLocaleString()}
       </Typography>
       <Stack direction="row" spacing={0.25} alignItems="center" justifyContent="flex-end">
         <Tooltip title="Configure">
-          <IconButton onClick={onConfigure} sx={endpointActionButtonSx}>
+          <IconButton disabled={disabled} onClick={onConfigure} sx={endpointActionButtonSx}>
             <SettingsIcon sx={endpointActionIconSx} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="View data">
-          <IconButton onClick={onShowData} sx={endpointActionButtonSx}>
-            <DataObjectIcon sx={endpointActionIconSx} />
           </IconButton>
         </Tooltip>
         {onDelete != undefined && (
           <Tooltip title="Delete output">
-            <IconButton onClick={onDelete} sx={endpointActionButtonSx}>
+            <IconButton disabled={disabled} onClick={onDelete} sx={endpointActionButtonSx}>
               <DeleteIcon sx={endpointActionIconSx} />
             </IconButton>
           </Tooltip>

@@ -1,5 +1,6 @@
 import type { SerialPortInfo } from "../../shared/ipc";
 import type {
+  FileParams,
   SerialParams,
   StreamEndpoint,
   StreamEndpointParams,
@@ -7,7 +8,14 @@ import type {
   StreamType
 } from "../../shared/stream";
 
-export const endpointTypes: StreamType[] = ["tcp-server", "tcp-client", "udp-server", "udp-client", "serial"];
+export const endpointTypes: StreamType[] = [
+  "tcp-server",
+  "tcp-client",
+  "udp-server",
+  "udp-client",
+  "serial",
+  "file"
+];
 
 export const networkTypes: StreamType[] = ["tcp-server", "tcp-client", "udp-server", "udp-client"];
 
@@ -23,9 +31,9 @@ export const flowControlOptions: SerialParams["flowControl"][] = ["none", "rtsct
 
 export function allowedEndpointTypes(mode: StreamMode): StreamType[] {
   if (mode === "input") {
-    return ["tcp-server", "tcp-client", "udp-server", "serial"];
+    return ["tcp-server", "tcp-client", "udp-server", "serial", "file"];
   }
-  return ["tcp-server", "tcp-client", "udp-client", "serial"];
+  return ["tcp-server", "tcp-client", "udp-client", "serial", "file"];
 }
 
 export function isSerialEndpoint(endpoint: { type: StreamType }): boolean {
@@ -34,6 +42,10 @@ export function isSerialEndpoint(endpoint: { type: StreamType }): boolean {
 
 export function isNetworkEndpoint(endpoint: { type: StreamType }): boolean {
   return networkTypes.includes(endpoint.type);
+}
+
+export function isFileEndpoint(endpoint: { type: StreamType }): boolean {
+  return endpoint.type === "file";
 }
 
 function networkEndpointDisplay(endpoint: StreamEndpoint): string {
@@ -55,13 +67,15 @@ export function endpointSummary(endpoint: StreamEndpoint): string {
     case "udp-client":
       return `UDP client ${networkEndpointDisplay(endpoint)}`;
     case "serial":
-      return `Serial ${endpointInfo(endpoint)}`;
+      return `Serial ${endpointPath(endpoint)}`;
+    case "file":
+      return `File ${endpointPath(endpoint)}`;
     default:
       return type;
   }
 }
 
-export function endpointInfo(endpoint: StreamEndpoint): string {
+export function endpointPath(endpoint: StreamEndpoint): string {
   const { type } = endpoint;
   const params = endpoint.params as unknown as Record<string, unknown>;
 
@@ -73,6 +87,8 @@ export function endpointInfo(endpoint: StreamEndpoint): string {
       return networkEndpointDisplay(endpoint);
     case "serial":
       return `${params.port}@${params.baudRate}`;
+    case "file":
+      return typeof params.path === "string" ? params.path : "";
     default:
       return type;
   }
@@ -83,10 +99,13 @@ export function formatLogDialogTitle(endpoint: StreamEndpoint | undefined): stri
     return "Global logs";
   }
   const role = endpoint.id === "input" ? "Input" : "Output";
-  return `Logs for ${role} (${endpointInfo(endpoint)})`;
+  return `Logs for ${role} (${endpointPath(endpoint)})`;
 }
 
 export function formatSerialPortLabel(port: SerialPortInfo): string {
+  if (port.friendlyName != undefined && port.friendlyName.length > 0) {
+    return port.friendlyName;
+  }
   const parts = [port.path];
   if (port.manufacturer != undefined && port.manufacturer.length > 0) {
     parts.push(port.manufacturer);
@@ -119,6 +138,8 @@ export function endpointHost(endpoint: StreamEndpoint): string {
       return typeof params.host === "string" ? params.host : "";
     case "serial":
       return typeof params.port === "string" ? params.port : String(params.port ?? "");
+    case "file":
+      return typeof params.path === "string" ? params.path : "";
     default:
       return "";
   }
@@ -135,6 +156,14 @@ export function defaultParamsForType(type: StreamType): StreamEndpointParams {
         stopBits: 1,
         flowControl: "none"
       };
+    case "file":
+      return {
+        path: "",
+        timeTag: false,
+        replaySpeed: 1,
+        startOffset: 0,
+        filePositionBytes: 4
+      } satisfies FileParams;
     case "tcp-server":
     case "udp-server":
       return { host: "127.0.0.1", port: 2101 };

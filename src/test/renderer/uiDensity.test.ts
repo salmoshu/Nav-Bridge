@@ -35,7 +35,7 @@ describe("compact UI density", () => {
   });
 
   it("keeps bottom buttons compact while preserving vertical padding", () => {
-    expect(bottomActionBarSx.py).toBeGreaterThanOrEqual(0.55);
+    expect(bottomActionBarSx.py).toBeGreaterThanOrEqual(1.1);
     expect(bottomActionButtonSx.height).toBeLessThanOrEqual(25);
   });
 

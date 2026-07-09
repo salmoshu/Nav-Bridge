@@ -80,4 +80,29 @@ describe("EndpointConfigDialog source", () => {
     expect(source).toContain("connectMessage");
     expect(source).toContain("multiline");
   });
+
+  it("exposes file endpoint path and time-tag options", () => {
+    const source = readSource();
+    expect(source).toContain('label="File path"');
+    expect(source).toContain("timeTag");
+    expect(source).toContain('label="Time Tag"');
+    expect(source).toContain('label="Replay speed"');
+    expect(source).toContain('label="Start offset (s)"');
+    expect(source).toContain('label="File position bytes"');
+  });
+
+  it("uses a dropdown for replay speed with RTKLIB-style speed options", () => {
+    const source = readSource();
+    expect(source).toContain('label="Replay speed"');
+    expect(source).toContain("const replaySpeedOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10]");
+    expect(source).toContain("x{speed}");
+  });
+
+  it("adds a browse button next to the file path field", () => {
+    const source = readSource();
+    expect(source).toContain("FolderOpenIcon");
+    expect(source).toContain('title="Browse"');
+    expect(source).toContain("handleBrowseFile");
+    expect(source).toContain("showFileDialog");
+  });
 });

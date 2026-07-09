@@ -3,7 +3,7 @@ import {
   createDefaultEndpoint,
   defaultParamsForType,
   endpointHost,
-  endpointInfo,
+  endpointPath,
   endpointSummary,
   formatEndpointType,
   formatLogDialogTitle,
@@ -13,6 +13,16 @@ import type { SerialPortInfo } from "../../shared/ipc";
 import type { StreamEndpoint } from "../../shared/stream";
 
 describe("endpointSummary", () => {
+  it("summarises a file endpoint", () => {
+    const endpoint: StreamEndpoint = {
+      id: "input",
+      type: "file",
+      enabled: true,
+      params: { path: "D:/data/capture.rtcm3", timeTag: true }
+    };
+    expect(endpointSummary(endpoint)).toBe("File D:/data/capture.rtcm3");
+  });
+
   it("summarises a serial endpoint", () => {
     const endpoint: StreamEndpoint = {
       id: "input",
@@ -71,7 +81,7 @@ describe("endpointSummary", () => {
   });
 });
 
-describe("endpointInfo", () => {
+describe("endpointPath", () => {
   it("returns host:port for TCP/UDP server endpoints, defaulting host to 0.0.0.0", () => {
     const tcpServer: StreamEndpoint = {
       id: "input",
@@ -79,7 +89,7 @@ describe("endpointInfo", () => {
       enabled: true,
       params: { host: "", port: 2101 }
     };
-    expect(endpointInfo(tcpServer)).toBe("0.0.0.0:2101");
+    expect(endpointPath(tcpServer)).toBe("0.0.0.0:2101");
 
     const udpServer: StreamEndpoint = {
       id: "input",
@@ -87,7 +97,7 @@ describe("endpointInfo", () => {
       enabled: true,
       params: { host: "127.0.0.1", port: 2101 }
     };
-    expect(endpointInfo(udpServer)).toBe("127.0.0.1:2101");
+    expect(endpointPath(udpServer)).toBe("127.0.0.1:2101");
   });
 
   it("returns host:port for TCP/UDP client endpoints", () => {
@@ -97,7 +107,7 @@ describe("endpointInfo", () => {
       enabled: true,
       params: { host: "192.168.1.10", port: 2101 }
     };
-    expect(endpointInfo(tcpClient)).toBe("192.168.1.10:2101");
+    expect(endpointPath(tcpClient)).toBe("192.168.1.10:2101");
 
     const udpClient: StreamEndpoint = {
       id: "output-1",
@@ -105,7 +115,7 @@ describe("endpointInfo", () => {
       enabled: true,
       params: { host: "127.0.0.1", port: 2201 }
     };
-    expect(endpointInfo(udpClient)).toBe("127.0.0.1:2201");
+    expect(endpointPath(udpClient)).toBe("127.0.0.1:2201");
   });
 
   it("returns port and baudRate for serial endpoints", () => {
@@ -122,7 +132,17 @@ describe("endpointInfo", () => {
         flowControl: "none"
       }
     };
-    expect(endpointInfo(serial)).toBe("COM3@115200");
+    expect(endpointPath(serial)).toBe("COM3@115200");
+  });
+
+  it("returns path for file endpoints", () => {
+    const file: StreamEndpoint = {
+      id: "input",
+      type: "file",
+      enabled: true,
+      params: { path: "capture.rtcm3", timeTag: false }
+    };
+    expect(endpointPath(file)).toBe("capture.rtcm3");
   });
 });
 
@@ -178,6 +198,15 @@ describe("defaultParamsForType", () => {
     expect(defaultParamsForType("udp-client")).toEqual({ host: "127.0.0.1", port: 2201 });
   });
 
+  it("returns file defaults", () => {
+    expect(defaultParamsForType("file")).toEqual({
+      path: "",
+      timeTag: false,
+      replaySpeed: 1,
+      startOffset: 0,
+      filePositionBytes: 4
+    });
+  });
 });
 
 describe("createDefaultEndpoint", () => {
@@ -192,11 +221,13 @@ describe("allowedEndpointTypes", () => {
   it("excludes udp-client for input mode", () => {
     expect(allowedEndpointTypes("input")).not.toContain("udp-client");
     expect(allowedEndpointTypes("input")).toContain("udp-server");
+    expect(allowedEndpointTypes("input")).toContain("file");
   });
 
   it("excludes udp-server for output mode", () => {
     expect(allowedEndpointTypes("output")).not.toContain("udp-server");
     expect(allowedEndpointTypes("output")).toContain("udp-client");
+    expect(allowedEndpointTypes("output")).toContain("file");
   });
 });
 
@@ -219,6 +250,15 @@ describe("formatSerialPortLabel", () => {
     const port: SerialPortInfo = { path: "/dev/ttyUSB0", serialNumber: "XYZ" };
     expect(formatSerialPortLabel(port)).toBe("/dev/ttyUSB0 - XYZ");
   });
+
+  it("prefers friendlyName when available", () => {
+    const port: SerialPortInfo = {
+      path: "COM7",
+      manufacturer: "Microsoft",
+      friendlyName: "COM7 - 蓝牙连接上的标准串行"
+    };
+    expect(formatSerialPortLabel(port)).toBe("COM7 - 蓝牙连接上的标准串行");
+  });
 });
 
 describe("formatEndpointType", () => {
@@ -231,6 +271,10 @@ describe("formatEndpointType", () => {
 
   it("formats serial with capitalised first letter", () => {
     expect(formatEndpointType("serial")).toBe("Serial");
+  });
+
+  it("formats file with capitalised first letter", () => {
+    expect(formatEndpointType("file")).toBe("File");
   });
 });
 
