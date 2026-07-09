@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { NavBridgeAPI, SerialPortInfo, WindowResizeEdge } from "../shared/ipc";
 import { ipcChannels } from "../shared/ipc";
-import type { LogEntry, StreamConfig, StreamDataEntry, StreamStatus } from "../shared/stream";
+import type { LogEntry, StreamConfig, StreamDataEntry, StreamMode, StreamStatus } from "../shared/stream";
 
 const api: NavBridgeAPI = {
   startServer: async (config: StreamConfig) => await ipcRenderer.invoke(ipcChannels.startServer, config),
@@ -29,6 +29,14 @@ const api: NavBridgeAPI = {
   stopWindowResize: async () => {
     await ipcRenderer.invoke(ipcChannels.stopWindowResize);
   },
+  openMonitorWindow: async () => {
+    await ipcRenderer.invoke(ipcChannels.openMonitorWindow);
+  },
+  closeMonitorWindow: async () => {
+    await ipcRenderer.invoke(ipcChannels.closeMonitorWindow);
+  },
+  showFileDialog: async (mode: StreamMode, suggestedPath?: string) =>
+    await ipcRenderer.invoke(ipcChannels.showFileDialog, mode, suggestedPath),
   onStatus: (callback: (status: StreamStatus) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, status: StreamStatus): void => callback(status);
     ipcRenderer.on(ipcChannels.status, listener);

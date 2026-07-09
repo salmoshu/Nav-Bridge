@@ -1,15 +1,31 @@
 import type { BrowserWindow } from "electron";
-import { dialog, ipcMain, screen } from "electron";
+import { app, dialog, ipcMain, screen } from "electron";
 import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import { SerialPort } from "serialport";
 import type { SerialPortInfo, StartServerResult, WindowResizeEdge } from "../../shared/ipc";
 import { ipcChannels } from "../../shared/ipc";
-import type { ConnectionStatus, LogEntry, StreamConfig, StreamDataEntry, StreamStatus } from "../../shared/stream";
+import type {
+  ConnectionStatus,
+  LogEntry,
+  StreamConfig,
+  StreamDataEntry,
+  StreamMode,
+  StreamStatus
+} from "../../shared/stream";
 import { ConfigStore } from "../config/ConfigStore";
 import { validateDuplicateClientEndpoints, validateStreamConfig } from "../config/validateStreamConfig";
+import {
+  closeMonitorWindow,
+  createMonitorWindow,
+  sendMonitorData,
+  sendMonitorLog,
+  sendMonitorStatus,
+  setMonitorAlwaysOnTop
+} from "../monitor/MonitorWindow";
 import { StreamServer } from "../stream/StreamServer";
 import { createAdapter } from "../stream/createAdapter";
-import { appWindowMinHeight } from "../windowOptions";
+import { appWindowMaxHeight, appWindowMinHeight } from "../windowOptions";
 
 export class IpcBridge {
   private server?: StreamServer;
@@ -37,6 +53,34 @@ export class IpcBridge {
     ipcMain.removeHandler(ipcChannels.closeWindow);
     ipcMain.removeHandler(ipcChannels.startWindowResize);
     ipcMain.removeHandler(ipcChannels.stopWindowResize);
+    ipcMain.removeHandler(ipcChannels.openMonitorWindow);
+    ipcMain.removeHandler(ipcChannels.closeMonitorWindow);
+    ipcMain.removeHandler(ipcChannels.showFileDialog);
+
+    ipcMain.handle(ipcChannels.openMonitorWindow, () => {
+      createMonitorWindow();
+      setMonitorAlwaysOnTop(this.window.isAlwaysOnTop());
+    });
+
+    ipcMain.handle(ipcChannels.closeMonitorWindow, () => {
+      closeMonitorWindow();
+    });
+
+    ipcMain.handle(ipcChannels.showFileDialog, async (_event, mode: StreamMode, suggestedPath?: string) => {
+      const defaultPath =
+        typeof suggestedPath === "string" && suggestedPath.length > 0
+          ? path.dirname(suggestedPath)
+          : app.getAppPath();
+      if (mode === "input") {
+        const result = await dialog.showOpenDialog(this.window, {
+          defaultPath,
+          properties: ["openFile"]
+        });
+        return !result.canceled && result.filePaths.length > 0 ? result.filePaths[0] : undefined;
+      }
+      const result = await dialog.showSaveDialog(this.window, { defaultPath });
+      return !result.canceled && result.filePath ? result.filePath : undefined;
+    });
 
     ipcMain.handle(
       ipcChannels.startServer,
@@ -91,7 +135,8 @@ export class IpcBridge {
         serialNumber: port.serialNumber,
         vendorId: port.vendorId,
         productId: port.productId,
-        pnpId: port.pnpId
+        pnpId: port.pnpId,
+        friendlyName: (port as { friendlyName?: string }).friendlyName
       }));
     });
 
@@ -102,6 +147,7 @@ export class IpcBridge {
     ipcMain.handle(ipcChannels.toggleAlwaysOnTop, (): boolean => {
       const next = !this.window.isAlwaysOnTop();
       this.window.setAlwaysOnTop(next);
+      setMonitorAlwaysOnTop(next);
       if (!this.window.webContents.isDestroyed()) {
         this.window.webContents.send(ipcChannels.windowAlwaysOnTop, next);
       }
@@ -121,9 +167,12 @@ export class IpcBridge {
       this.resizeInterval = setInterval(() => {
         const cursor = screen.getCursorScreenPoint();
         const deltaY = cursor.y - initialCursor.y;
-        const height = Math.max(
-          appWindowMinHeight,
-          edge === "bottom" ? initialBounds.height + deltaY : initialBounds.height - deltaY
+        const height = Math.min(
+          appWindowMaxHeight,
+          Math.max(
+            appWindowMinHeight,
+            edge === "bottom" ? initialBounds.height + deltaY : initialBounds.height - deltaY
+          )
         );
         const y = edge === "top" ? initialBounds.y + initialBounds.height - height : initialBounds.y;
 
@@ -185,20 +234,18 @@ export class IpcBridge {
   }
 
   private log(level: LogEntry["level"], message: string): void {
-    if (this.window.webContents.isDestroyed()) {
-      return;
-    }
-    this.window.webContents.send(ipcChannels.log, {
+    const logEntry: LogEntry = {
       level,
       message,
       time: new Date().toISOString()
-    } satisfies LogEntry);
+    };
+    if (!this.window.webContents.isDestroyed()) {
+      this.window.webContents.send(ipcChannels.log, logEntry);
+    }
+    sendMonitorLog(logEntry);
   }
 
   private handleStatus(status: StreamStatus): void {
-    if (this.window.webContents.isDestroyed()) {
-      return;
-    }
     if (status.input.status === "connected" && this.lastInputStatus !== "connected") {
       const address =
         this.inputHost != undefined && this.inputPort != undefined
@@ -207,17 +254,20 @@ export class IpcBridge {
       this.log("info", `Input connected (${address})`);
     }
     this.lastInputStatus = status.input.status;
-    this.window.webContents.send(ipcChannels.status, status);
+    if (!this.window.webContents.isDestroyed()) {
+      this.window.webContents.send(ipcChannels.status, status);
+    }
+    sendMonitorStatus(status);
   }
 
   private sendData(entry: StreamDataEntry): void {
-    if (!this.firstDataLogged && entry.direction === "input") {
+    if (!this.firstDataLogged) {
       this.firstDataLogged = true;
-      this.log("info", `First data from ${entry.endpointId}: ${entry.bytes} bytes`);
+      this.log("info", `First data: ${entry.data.length} bytes`);
     }
-    if (this.window.webContents.isDestroyed()) {
-      return;
+    if (!this.window.webContents.isDestroyed()) {
+      this.window.webContents.send(ipcChannels.data, entry);
     }
-    this.window.webContents.send(ipcChannels.data, entry);
+    sendMonitorData(entry);
   }
 }
