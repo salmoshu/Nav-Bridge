@@ -29,6 +29,7 @@ describe("ipcChannels", () => {
   it("includes monitor window channels", () => {
     expect(ipcChannels.openMonitorWindow).toBe("nav-bridge:monitor-open");
     expect(ipcChannels.closeMonitorWindow).toBe("nav-bridge:monitor-close");
+    expect(ipcChannels.clearMonitorCache).toBe("nav-bridge:monitor-clear-cache");
   });
 
   it("includes the file dialog channel", () => {

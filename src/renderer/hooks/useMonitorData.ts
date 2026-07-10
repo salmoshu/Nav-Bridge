@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { LogEntry, StreamDataEntry, StreamStatus } from "../../shared/stream";
 import { MAX_MONITOR_DATA_ENTRIES, MAX_MONITOR_LOG_ENTRIES, pushMonitorEntry } from "../lib/monitorLimits";
 import { useNavBridgeAPI } from "./useNavBridgeAPI";
@@ -8,6 +8,12 @@ export function useMonitorData() {
   const [status, setStatus] = useState<StreamStatus>();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [dataEntries, setDataEntries] = useState<StreamDataEntry[]>([]);
+
+  const clear = useCallback(async (): Promise<void> => {
+    setLogs([]);
+    setDataEntries([]);
+    await api.clearMonitorCache();
+  }, [api]);
 
   useEffect(() => {
     const removeStatus = api.onStatus(setStatus);
@@ -24,5 +30,5 @@ export function useMonitorData() {
     };
   }, [api]);
 
-  return { status, logs, dataEntries };
+  return { status, logs, dataEntries, clear };
 }

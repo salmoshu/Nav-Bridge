@@ -9,7 +9,7 @@ import { loadThemeMode, resolveThemeMode } from "./lib/themeMode";
 
 function MonitorRoot(): JSX.Element {
   const api = useNavBridgeAPI();
-  const { status, logs, dataEntries } = useMonitorData();
+  const { status, logs, dataEntries, clear } = useMonitorData();
   const themeMode = loadThemeMode();
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = createAppTheme(resolveThemeMode(themeMode, prefersDark));
@@ -21,6 +21,7 @@ function MonitorRoot(): JSX.Element {
         status={status}
         logs={logs}
         dataEntries={dataEntries}
+        onClear={clear}
         onClose={() => void api.closeMonitorWindow()}
       />
     </ThemeProvider>

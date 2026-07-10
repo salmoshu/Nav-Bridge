@@ -31,6 +31,7 @@ export interface NavBridgeAPI {
   stopWindowResize(): Promise<void>;
   openMonitorWindow(): Promise<void>;
   closeMonitorWindow(): Promise<void>;
+  clearMonitorCache(): Promise<void>;
   showFileDialog(mode: StreamMode, suggestedPath?: string): Promise<string | undefined>;
   onStatus(callback: (status: StreamStatus) => void): () => void;
   onLog(callback: (log: LogEntry) => void): () => void;
@@ -52,6 +53,7 @@ export const ipcChannels = {
   stopWindowResize: "nav-bridge:window-resize-stop",
   openMonitorWindow: "nav-bridge:monitor-open",
   closeMonitorWindow: "nav-bridge:monitor-close",
+  clearMonitorCache: "nav-bridge:monitor-clear-cache",
   showFileDialog: "nav-bridge:show-file-dialog",
   windowAlwaysOnTop: "nav-bridge:window-always-on-top",
   status: "nav-bridge:status",

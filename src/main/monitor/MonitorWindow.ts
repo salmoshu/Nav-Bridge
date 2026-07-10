@@ -83,6 +83,11 @@ export function closeMonitorWindow(): void {
   }
 }
 
+export function clearMonitorCache(): void {
+  monitorLogBuffer.length = 0;
+  monitorDataBuffer.length = 0;
+}
+
 export function sendMonitorStatus(status: StreamStatus): void {
   if (monitorWindow != undefined && !monitorWindow.webContents.isDestroyed()) {
     monitorWindow.webContents.send(ipcChannels.status, status);

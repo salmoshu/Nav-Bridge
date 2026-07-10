@@ -150,10 +150,11 @@ export interface MonitorAppProps {
   status?: StreamStatus;
   logs: LogEntry[];
   dataEntries: StreamDataEntry[];
+  onClear: () => void;
   onClose: () => void;
 }
 
-export function MonitorApp({ status, logs, dataEntries, onClose }: MonitorAppProps) {
+export function MonitorApp({ status, logs, dataEntries, onClear, onClose }: MonitorAppProps) {
   const [view, setView] = useState<MonitorView>("streams");
   const [paused, setPaused] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -213,6 +214,7 @@ export function MonitorApp({ status, logs, dataEntries, onClose }: MonitorAppPro
     setDisplayStatus(undefined);
     setDisplayData([]);
     setDisplayLogs([]);
+    onClear();
   };
 
   const scrollToBottom = (): void => {

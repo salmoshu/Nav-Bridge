@@ -76,6 +76,19 @@ describe("MonitorWindow z-order", () => {
   });
 });
 
+describe("MonitorWindow clear cache", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "src/main/monitor/MonitorWindow.ts"), "utf-8");
+
+  it("exposes a clearMonitorCache function", () => {
+    expect(source).toContain("export function clearMonitorCache");
+  });
+
+  it("clears both log and data buffers", () => {
+    expect(source).toContain("monitorLogBuffer.length = 0");
+    expect(source).toContain("monitorDataBuffer.length = 0");
+  });
+});
+
 describe("window z-order handling", () => {
   const source = fs.readFileSync(path.join(repoRoot, "src/main/index.ts"), "utf-8");
 

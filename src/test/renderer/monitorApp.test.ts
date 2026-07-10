@@ -189,3 +189,18 @@ describe("MonitorApp scrolling behavior", () => {
     expect(source).toContain('{ value: "hex", label: "HEX" }');
   });
 });
+
+describe("MonitorApp clear behavior", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "src/renderer/components/MonitorApp.tsx"), "utf-8");
+
+  it("accepts an onClear callback prop", () => {
+    expect(source).toContain("onClear: () => void");
+  });
+
+  it("clears display state and invokes onClear when clearing the screen", () => {
+    expect(source).toContain("setDisplayStatus(undefined)");
+    expect(source).toContain("setDisplayData([])");
+    expect(source).toContain("setDisplayLogs([])");
+    expect(source).toMatch(/const\s+clear\s*=\s*\(\)\s*(?::\s*\w+\s*)?=>\s*\{[\s\S]*?onClear\(\)/);
+  });
+});

@@ -17,6 +17,7 @@ import { ConfigStore } from "../config/ConfigStore";
 import { validateDuplicateClientEndpoints, validateStreamConfig } from "../config/validateStreamConfig";
 import {
   closeMonitorWindow,
+  clearMonitorCache,
   createMonitorWindow,
   sendMonitorData,
   sendMonitorLog,
@@ -55,6 +56,7 @@ export class IpcBridge {
     ipcMain.removeHandler(ipcChannels.stopWindowResize);
     ipcMain.removeHandler(ipcChannels.openMonitorWindow);
     ipcMain.removeHandler(ipcChannels.closeMonitorWindow);
+    ipcMain.removeHandler(ipcChannels.clearMonitorCache);
     ipcMain.removeHandler(ipcChannels.showFileDialog);
 
     ipcMain.handle(ipcChannels.openMonitorWindow, () => {
@@ -64,6 +66,10 @@ export class IpcBridge {
 
     ipcMain.handle(ipcChannels.closeMonitorWindow, () => {
       closeMonitorWindow();
+    });
+
+    ipcMain.handle(ipcChannels.clearMonitorCache, () => {
+      clearMonitorCache();
     });
 
     ipcMain.handle(ipcChannels.showFileDialog, async (_event, mode: StreamMode, suggestedPath?: string) => {

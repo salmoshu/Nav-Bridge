@@ -35,6 +35,9 @@ const api: NavBridgeAPI = {
   closeMonitorWindow: async () => {
     await ipcRenderer.invoke(ipcChannels.closeMonitorWindow);
   },
+  clearMonitorCache: async () => {
+    await ipcRenderer.invoke(ipcChannels.clearMonitorCache);
+  },
   showFileDialog: async (mode: StreamMode, suggestedPath?: string) =>
     await ipcRenderer.invoke(ipcChannels.showFileDialog, mode, suggestedPath),
   onStatus: (callback: (status: StreamStatus) => void) => {
