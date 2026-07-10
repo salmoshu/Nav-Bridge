@@ -227,7 +227,7 @@ describe("allowedEndpointTypes", () => {
   });
 
   it("restricts output mode to server, serial and file types", () => {
-    expect(allowedEndpointTypes("output")).toEqual(["tcp-server", "serial", "file"]);
+    expect(allowedEndpointTypes("output")).toEqual(["tcp-server", "udp-server", "serial", "file"]);
   });
 });
 

@@ -37,7 +37,7 @@ export function allowedEndpointTypes(mode: StreamMode): StreamType[] {
   if (mode === "input") {
     return ["tcp-server", "tcp-client", "udp-server", "serial", "file"];
   }
-  return ["tcp-server", "serial", "file"];
+  return ["tcp-server", "udp-server", "serial", "file"];
 }
 
 export function isSerialEndpoint(endpoint: { type: StreamType }): boolean {
