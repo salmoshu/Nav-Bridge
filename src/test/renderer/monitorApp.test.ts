@@ -96,7 +96,7 @@ describe("formatHex", () => {
 
   it("renders bytes as uppercase hex", () => {
     const entries: StreamDataEntry[] = [{ time: "2026-01-01T00:00:00.000Z", data: [0, 255, 16, 31] }];
-    expect(formatHex(entries)).toBe("00 FF 10 1F");
+    expect(formatHex(entries)).toBe("00 FF 10 1F  ");
   });
 
   it("fixes 32 bytes per line", () => {
@@ -107,14 +107,14 @@ describe("formatHex", () => {
     expect(lines).toHaveLength(2);
     expect(lines[0].startsWith("00 01 02 03")).toBe(true);
     expect(lines[1].startsWith("20 21 22 23")).toBe(true);
-    expect(lines[0].split("  ")).toHaveLength(8);
+    expect(lines[0].trimEnd().split("  ")).toHaveLength(8);
   });
 
   it("groups bytes by four with an extra space between groups", () => {
     const data = Array.from({ length: 8 }, (_, index) => index);
     const entries: StreamDataEntry[] = [{ time: "2026-01-01T00:00:00.000Z", data }];
 
-    expect(formatHex(entries)).toBe("00 01 02 03  04 05 06 07");
+    expect(formatHex(entries)).toBe("00 01 02 03  04 05 06 07  ");
   });
 
   it("concatenates data across multiple entries", () => {
@@ -123,7 +123,7 @@ describe("formatHex", () => {
       { time: "2026-01-01T00:00:00.001Z", data: [0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64] }
     ];
 
-    expect(formatHex(entries)).toBe("48 65 6C 6C  6F 20 57 6F  72 6C 64");
+    expect(formatHex(entries)).toBe("48 65 6C 6C  6F 20 57 6F  72 6C 64  ");
   });
 });
 
@@ -136,12 +136,12 @@ describe("formatAscii", () => {
     const entries: StreamDataEntry[] = [
       { time: "2026-01-01T00:00:00.000Z", data: [0x48, 0x65, 0x6c, 0x6c, 0x6f] }
     ];
-    expect(formatAscii(entries)).toBe("Hello");
+    expect(formatAscii(entries)).toBe("Hello  ");
   });
 
   it("renders non-printable bytes as dots", () => {
     const entries: StreamDataEntry[] = [{ time: "2026-01-01T00:00:00.000Z", data: [0x48, 0x00, 0x7f] }];
-    expect(formatAscii(entries)).toBe("H..");
+    expect(formatAscii(entries)).toBe("H..  ");
   });
 
   it("strips trailing carriage return and line feed bytes", () => {
@@ -149,12 +149,12 @@ describe("formatAscii", () => {
     const data = [...Buffer.from(line, "ascii"), 0x0d, 0x0a];
     const entries: StreamDataEntry[] = [{ time: "2026-01-01T00:00:00.000Z", data }];
 
-    expect(formatAscii(entries)).toBe(line);
+    expect(formatAscii(entries)).toBe(`${line}  `);
   });
 
-  it("keeps internal line endings as dots", () => {
+  it("renders internal line endings as line breaks", () => {
     const entries: StreamDataEntry[] = [{ time: "2026-01-01T00:00:00.000Z", data: [0x61, 0x0d, 0x0a, 0x62] }];
-    expect(formatAscii(entries)).toBe("a..b");
+    expect(formatAscii(entries)).toBe("a  \nb  ");
   });
 });
 

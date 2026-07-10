@@ -53,6 +53,8 @@ function formatLogTime(time: string): string {
 }
 
 function toAsciiChar(byte: number): string {
+  if (byte === 0x0a) return "\n";
+  if (byte === 0x0d) return "\r";
   return byte >= 0x20 && byte <= 0x7e ? String.fromCharCode(byte) : ".";
 }
 
@@ -123,7 +125,7 @@ export function formatHex(dataEntries: StreamDataEntry[]): string {
     }
     lines.push(groups.join("  "));
   }
-  return lines.join("\n");
+  return lines.map((line) => `${line}  `).join("\n");
 }
 
 function stripTrailingNewlines(bytes: number[]): number[] {
@@ -140,10 +142,17 @@ function stripTrailingNewlines(bytes: number[]): number[] {
 }
 
 export function formatAscii(dataEntries: StreamDataEntry[]): string {
-  return dataEntries
-    .map((entry) => stripTrailingNewlines(entry.data).map(toAsciiChar).join(""))
+  const text = dataEntries
+    .map((entry) => stripTrailingNewlines(entry.data).map(toAsciiChar).join("").replace(/\r\n/g, "\n"))
     .join("\n")
     .trim();
+  if (text === "") {
+    return "";
+  }
+  return text
+    .split("\n")
+    .map((line) => `${line}  `)
+    .join("\n");
 }
 
 export interface MonitorAppProps {
@@ -350,7 +359,24 @@ export function MonitorApp({ status, logs, dataEntries, onClear, onClose }: Moni
               minHeight: 0,
               overflow: "auto",
               bgcolor: "background.default",
-              borderColor: "divider"
+              borderColor: "divider",
+              "&::-webkit-scrollbar": {
+                width: 10,
+                height: 10
+              },
+              "&::-webkit-scrollbar-track": {
+                backgroundColor: "transparent"
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "text.disabled",
+                borderRadius: 5,
+                "&:hover": {
+                  backgroundColor: "text.secondary"
+                }
+              },
+              "&::-webkit-scrollbar-corner": {
+                backgroundColor: "transparent"
+              }
             }}
           >
             {empty ? (

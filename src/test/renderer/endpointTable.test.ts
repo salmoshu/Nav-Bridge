@@ -213,7 +213,7 @@ describe("endpointGridColumns", () => {
     expect(source.indexOf("<SettingsIcon")).toBeLessThan(source.indexOf("<DeleteIcon"));
   });
 
-  it("labels the switch column as Switch and keeps the index column as #", () => {
+  it("labels the switch column as Enable and keeps the index column as #", () => {
     const fs = require("node:fs") as typeof import("node:fs");
     const path = require("node:path") as typeof import("node:path");
     const source = fs.readFileSync(
@@ -222,7 +222,7 @@ describe("endpointGridColumns", () => {
     );
 
     const hashIndex = source.indexOf("<span>#</span>");
-    const switchIndex = source.indexOf("<span>Switch</span>");
+    const switchIndex = source.indexOf("<span>Enable</span>");
     expect(hashIndex).toBeGreaterThanOrEqual(0);
     expect(switchIndex).toBeGreaterThanOrEqual(0);
     expect(hashIndex).toBeLessThan(switchIndex);
@@ -253,6 +253,49 @@ describe("endpointGridColumns", () => {
 
     expect(source).toContain("checked={endpoint.enabled}");
     expect(source).toContain("onChange={() => onChange({ ...endpoint, enabled: !endpoint.enabled })}");
+  });
+
+  it("keeps a disabled off switch visually unchanged after starting the server", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).toContain("disabled={disabled || isInput}");
+    expect(source).toContain("backgroundColor: alpha(statusColorValue, 0.4)");
+    expect(source).toContain("& .MuiSwitch-switchBase.Mui-disabled:not(.Mui-checked) + .MuiSwitch-track");
+    expect(source).toContain("& .MuiSwitch-switchBase.Mui-disabled:not(.Mui-checked) .MuiSwitch-thumb");
+  });
+
+  it("keeps the enabled switch thumb and track colors in sync by not animating background-color", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    const switchSxMatch = source.match(
+      /<Switch[\s\S]*?checked=\{endpoint\.enabled\}[\s\S]*?sx=\{\{([\s\S]*?)\}\}\s*\/>/
+    );
+    expect(switchSxMatch).not.toBeNull();
+    const transitions = switchSxMatch![1].match(/transition:/g) ?? [];
+    expect(transitions.length).toBe(0);
+  });
+
+  it("dims row content but keeps the index badge bright when a switch is off", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).toContain("& > :not(:first-child)");
+    expect(source).toContain("opacity: endpoint.enabled ? 1 : 0.55");
+    expect(source).toContain('transition: "opacity 0.2s ease"');
   });
 
   it("keeps the input switch always enabled and non-interactive", () => {

@@ -79,7 +79,15 @@ export function App() {
           onToggleAlwaysOnTop={() => void api.toggleAlwaysOnTop()}
         />
 
-        <Box sx={{ flex: 1, overflow: "hidden" }}>
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: "auto",
+            "&::-webkit-scrollbar": { display: "none" },
+            scrollbarWidth: "none",
+            msOverflowStyle: "none"
+          }}
+        >
           <Container maxWidth={false} disableGutters sx={{ py: 1, px: 1.25 }}>
             <Stack spacing={1}>
               {error != undefined && <ErrorAlert message={error} onClose={clearError} />}

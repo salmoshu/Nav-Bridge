@@ -70,7 +70,7 @@ const statusColor = {
 } as const;
 
 const MAX_OUTPUTS = 5;
-export const endpointGridColumns = "28px 42px 36px 110px minmax(124px,1fr) 72px 32px 64px";
+export const endpointGridColumns = "28px 42px 36px 105px minmax(124px,1fr) 72px 32px 60px";
 export const endpointActionButtonSx = {
   p: 0,
   width: 20,
@@ -185,7 +185,7 @@ export function EndpointTable({
           }}
         >
           <span>#</span>
-          <span>Switch</span>
+          <span>Enable</span>
           <span>Role</span>
           <span>Type</span>
           <span>Path</span>
@@ -432,8 +432,10 @@ function EndpointRow({
         boxSizing: "border-box",
         borderBottom: 1,
         borderColor: "divider",
-        opacity: endpoint.enabled ? 1 : 0.55,
-        transition: "opacity 0.2s ease"
+        "& > :not(:first-child)": {
+          opacity: endpoint.enabled ? 1 : 0.55,
+          transition: "opacity 0.2s ease"
+        }
       }}
     >
       <Box
@@ -474,6 +476,13 @@ function EndpointRow({
               backgroundColor: statusColorValue
             },
             "& .Mui-checked .MuiSwitch-thumb": {
+              backgroundColor: statusColorValue
+            },
+            "& .MuiSwitch-switchBase.Mui-disabled:not(.Mui-checked) + .MuiSwitch-track": {
+              backgroundColor: alpha(statusColorValue, 0.4),
+              opacity: 1
+            },
+            "& .MuiSwitch-switchBase.Mui-disabled:not(.Mui-checked) .MuiSwitch-thumb": {
               backgroundColor: statusColorValue
             }
           }}
