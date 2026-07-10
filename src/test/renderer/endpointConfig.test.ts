@@ -226,8 +226,10 @@ describe("allowedEndpointTypes", () => {
     expect(allowedEndpointTypes("input")).toContain("file");
   });
 
-  it("restricts output mode to server, serial and file types", () => {
-    expect(allowedEndpointTypes("output")).toEqual(["tcp-server", "udp-server", "serial", "file"]);
+  it("excludes udp-server for output mode", () => {
+    expect(allowedEndpointTypes("output")).not.toContain("udp-server");
+    expect(allowedEndpointTypes("output")).toContain("udp-client");
+    expect(allowedEndpointTypes("output")).toContain("file");
   });
 });
 

@@ -127,7 +127,7 @@ describe("endpointGridColumns", () => {
     expect(source).not.toContain("onShowData");
   });
 
-  it("adds concrete enabled TCP server outputs instead of blank endpoint types", () => {
+  it("adds concrete enabled UDP client outputs instead of blank endpoint types", () => {
     const fs = require("node:fs") as typeof import("node:fs");
     const path = require("node:path") as typeof import("node:path");
     const source = fs.readFileSync(
@@ -135,7 +135,7 @@ describe("endpointGridColumns", () => {
       "utf-8"
     );
 
-    expect(source).toContain('createDefaultEndpoint(`output-${nextIndex}`, "tcp-server")');
+    expect(source).toContain('createDefaultEndpoint(`output-${nextIndex}`, "udp-client")');
     expect(source).not.toContain('createDefaultEndpoint(`output-${nextIndex}`, "")');
     expect(source).not.toContain('<MenuItem key="" value="">');
     expect(source).not.toContain("disabled={isBlank}");

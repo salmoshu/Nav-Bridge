@@ -111,9 +111,9 @@ export const defaultStreamConfig: StreamConfig = {
   outputs: [
     {
       id: "output-1",
-      type: "tcp-server",
+      type: "udp-client",
       enabled: true,
-      params: { host: "0.0.0.0", port: 2201 }
+      params: { host: "127.0.0.1", port: 2201 }
     }
   ],
   options: {
