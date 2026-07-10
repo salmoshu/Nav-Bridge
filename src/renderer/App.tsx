@@ -79,7 +79,7 @@ export function App() {
           onToggleAlwaysOnTop={() => void api.toggleAlwaysOnTop()}
         />
 
-        <Box sx={{ flex: 1, overflow: "auto" }}>
+        <Box sx={{ flex: 1, overflow: "hidden" }}>
           <Container maxWidth={false} disableGutters sx={{ py: 1, px: 1.25 }}>
             <Stack spacing={1}>
               {error != undefined && <ErrorAlert message={error} onClose={clearError} />}
