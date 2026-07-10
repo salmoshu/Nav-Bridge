@@ -197,7 +197,7 @@ describe("endpointGridColumns", () => {
     expect(source).toContain('color: disabled ? "text.disabled" : endpointActionIconSx.color');
   });
 
-  it("keeps the status dot in the first cell and delete as the last row action", () => {
+  it("keeps the index badge before the enable switch and delete as the last row action", () => {
     const fs = require("node:fs") as typeof import("node:fs");
     const path = require("node:path") as typeof import("node:path");
     const source = fs.readFileSync(
@@ -205,11 +205,80 @@ describe("endpointGridColumns", () => {
       "utf-8"
     );
 
-    const circleIndex = source.indexOf("<CircleIcon");
     const indexBadgeIndex = source.indexOf("width: 18");
-    expect(circleIndex).toBeGreaterThanOrEqual(0);
+    const switchIndex = source.indexOf("<Switch");
     expect(indexBadgeIndex).toBeGreaterThanOrEqual(0);
-    expect(circleIndex).toBeLessThan(indexBadgeIndex);
+    expect(switchIndex).toBeGreaterThanOrEqual(0);
+    expect(indexBadgeIndex).toBeLessThan(switchIndex);
     expect(source.indexOf("<SettingsIcon")).toBeLessThan(source.indexOf("<DeleteIcon"));
+  });
+
+  it("labels the switch column as Switch and keeps the index column as #", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    const hashIndex = source.indexOf("<span>#</span>");
+    const switchIndex = source.indexOf("<span>Switch</span>");
+    expect(hashIndex).toBeGreaterThanOrEqual(0);
+    expect(switchIndex).toBeGreaterThanOrEqual(0);
+    expect(hashIndex).toBeLessThan(switchIndex);
+  });
+
+  it("uses switch colors to show connection status instead of a left border", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).not.toContain("<CircleIcon");
+    expect(source).not.toContain("borderLeft: 3");
+    expect(source).toContain("statusColorValue");
+    expect(source).toContain("backgroundColor: statusColorValue");
+    expect(source).toContain("backgroundColor: alpha(statusColorValue, 0.4)");
+  });
+
+  it("renders an enable switch that toggles endpoint.enabled for outputs", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).toContain("checked={endpoint.enabled}");
+    expect(source).toContain("onChange={() => onChange({ ...endpoint, enabled: !endpoint.enabled })}");
+  });
+
+  it("keeps the input switch always enabled and non-interactive", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).toContain('title={isInput ? "Input is always enabled"');
+    expect(source).toContain("disabled={disabled || isInput}");
+  });
+
+  it("uses the default small MUI Switch with status-based coloring", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).not.toContain("const SlimSwitch = styled(Switch)");
+    expect(source).toContain('size="small"');
+    expect(source).toContain("statusColorValue");
+    expect(source).toContain("backgroundColor: statusColorValue");
+    expect(source).toContain("backgroundColor: alpha(statusColorValue, 0.4)");
   });
 });

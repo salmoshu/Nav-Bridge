@@ -1,5 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import CircleIcon from "@mui/icons-material/Circle";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -11,6 +10,7 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography
@@ -70,7 +70,7 @@ const statusColor = {
 } as const;
 
 const MAX_OUTPUTS = 5;
-export const endpointGridColumns = "20px 28px 36px 110px minmax(124px,1fr) 72px 32px 64px";
+export const endpointGridColumns = "28px 42px 36px 110px minmax(124px,1fr) 72px 32px 64px";
 export const endpointActionButtonSx = {
   p: 0,
   width: 20,
@@ -184,8 +184,8 @@ export function EndpointTable({
             minHeight: ENDPOINT_TABLE_COLUMN_HEADER_HEIGHT
           }}
         >
-          <span />
           <span>#</span>
+          <span>Switch</span>
           <span>Role</span>
           <span>Type</span>
           <span>Path</span>
@@ -418,6 +418,7 @@ function EndpointRow({
   const types = allowedEndpointTypes(mode);
   const isInput = mode === "input";
   const badgeColor = isInput ? theme.palette.primary.main : theme.palette.secondary.main;
+  const statusColorValue = statusColor[metric.status as keyof typeof statusColor];
 
   return (
     <Box
@@ -430,12 +431,11 @@ function EndpointRow({
         height: ENDPOINT_ROW_HEIGHT,
         boxSizing: "border-box",
         borderBottom: 1,
-        borderColor: "divider"
+        borderColor: "divider",
+        opacity: endpoint.enabled ? 1 : 0.55,
+        transition: "opacity 0.2s ease"
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircleIcon sx={{ fontSize: 8, color: statusColor[metric.status as keyof typeof statusColor] }} />
-      </Box>
       <Box
         sx={{
           width: 18,
@@ -452,6 +452,33 @@ function EndpointRow({
       >
         {index}
       </Box>
+      <Tooltip
+        title={isInput ? "Input is always enabled" : endpoint.enabled ? "Disable output" : "Enable output"}
+      >
+        <Switch
+          size="small"
+          checked={endpoint.enabled}
+          disabled={disabled || isInput}
+          onChange={() => onChange({ ...endpoint, enabled: !endpoint.enabled })}
+          sx={{
+            justifySelf: "center",
+            "& .MuiSwitch-track": {
+              backgroundColor: alpha(statusColorValue, 0.4),
+              opacity: 1
+            },
+            "& .Mui-checked + .MuiSwitch-track": {
+              backgroundColor: alpha(statusColorValue, 0.4),
+              opacity: 1
+            },
+            "& .MuiSwitch-thumb": {
+              backgroundColor: statusColorValue
+            },
+            "& .Mui-checked .MuiSwitch-thumb": {
+              backgroundColor: statusColorValue
+            }
+          }}
+        />
+      </Tooltip>
       <Typography variant="caption" noWrap sx={{ fontSize: "0.7rem" }}>
         {isInput ? "In" : "Out"}
       </Typography>

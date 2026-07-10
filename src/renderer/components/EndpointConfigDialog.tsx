@@ -122,6 +122,18 @@ export function EndpointConfigDialog({
             ))}
           </TextField>
 
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={draft.enabled}
+                disabled={mode === "input"}
+                onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })}
+              />
+            }
+            label={mode === "input" ? "Enabled (input is always active)" : "Enabled"}
+          />
+
           {isClientEndpoint(draft) && (
             <Stack direction="row" spacing={1}>
               <TextField
@@ -142,13 +154,7 @@ export function EndpointConfigDialog({
 
           {(draft.type === "tcp-server" || draft.type === "udp-server") && (
             <Stack direction="row" spacing={1}>
-              <TextField
-                label="Host"
-                value="0.0.0.0"
-                disabled
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField label="Host" value="0.0.0.0" disabled fullWidth InputLabelProps={{ shrink: true }} />
               <TextField
                 label="Port"
                 type="number"

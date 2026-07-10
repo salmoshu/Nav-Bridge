@@ -14,9 +14,11 @@ describe("EndpointConfigDialog source", () => {
     expect(source).not.toContain("Configure output-");
   });
 
-  it("does not expose an Enabled switch", () => {
+  it("exposes an Enabled switch that is disabled for the input endpoint", () => {
     const source = readSource();
-    expect(source).not.toContain('label="Enabled"');
+    expect(source).toMatch(/label=\{mode === "input" \? "Enabled \(input is always active\)" : "Enabled"\}/);
+    expect(source).toContain("checked={draft.enabled}");
+    expect(source).toContain('disabled={mode === "input"}');
   });
 
   it("uses a dropdown select for the serial port", () => {
