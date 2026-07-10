@@ -16,7 +16,7 @@ export const ENDPOINT_ROW_HEIGHT = 48;
 
 // Small safety margin to avoid showing a vertical scrollbar due to rounding/sub-pixel
 // layout differences across DPIs and platforms.
-const WINDOW_HEIGHT_SAFETY_MARGIN = 12;
+const WINDOW_HEIGHT_SAFETY_MARGIN = 4;
 
 export function mainWindowHeightForEndpointRows(rows: number): number {
   // When there are already 6 streams (input + 5 outputs), the Add Output button is hidden.
