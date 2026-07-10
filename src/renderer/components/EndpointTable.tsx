@@ -131,7 +131,7 @@ export function EndpointTable({
     const nextIndex = config.outputs.length + 1;
     onChange({
       ...config,
-      outputs: [...config.outputs, createDefaultEndpoint(`output-${nextIndex}`, "udp-client")]
+      outputs: [...config.outputs, createDefaultEndpoint(`output-${nextIndex}`, "tcp-server")]
     });
   };
 
