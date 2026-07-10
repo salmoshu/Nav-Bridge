@@ -281,8 +281,8 @@ describe("endpointGridColumns", () => {
       /<Switch[\s\S]*?checked=\{endpoint\.enabled\}[\s\S]*?sx=\{\{([\s\S]*?)\}\}\s*\/>/
     );
     expect(switchSxMatch).not.toBeNull();
-    const transitions = switchSxMatch![1].match(/transition:/g) ?? [];
-    expect(transitions.length).toBe(0);
+    const transitions = switchSxMatch![1].match(/transition:\s*"none"/g) ?? [];
+    expect(transitions.length).toBe(2);
   });
 
   it("dims row content but keeps the index badge bright when a switch is off", () => {
@@ -320,6 +320,7 @@ describe("endpointGridColumns", () => {
 
     expect(source).not.toContain("const SlimSwitch = styled(Switch)");
     expect(source).toContain('size="small"');
+    expect(source).toContain('color="default"');
     expect(source).toContain("statusColorValue");
     expect(source).toContain("backgroundColor: statusColorValue");
     expect(source).toContain("backgroundColor: alpha(statusColorValue, 0.4)");

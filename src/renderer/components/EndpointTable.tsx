@@ -459,6 +459,7 @@ function EndpointRow({
       >
         <Switch
           size="small"
+          color="default"
           checked={endpoint.enabled}
           disabled={disabled || isInput}
           onChange={() => onChange({ ...endpoint, enabled: !endpoint.enabled })}
@@ -466,14 +467,16 @@ function EndpointRow({
             justifySelf: "center",
             "& .MuiSwitch-track": {
               backgroundColor: alpha(statusColorValue, 0.4),
-              opacity: 1
+              opacity: 1,
+              transition: "none"
             },
             "& .Mui-checked + .MuiSwitch-track": {
               backgroundColor: alpha(statusColorValue, 0.4),
               opacity: 1
             },
             "& .MuiSwitch-thumb": {
-              backgroundColor: statusColorValue
+              backgroundColor: statusColorValue,
+              transition: "none"
             },
             "& .Mui-checked .MuiSwitch-thumb": {
               backgroundColor: statusColorValue
@@ -483,6 +486,13 @@ function EndpointRow({
               opacity: 1
             },
             "& .MuiSwitch-switchBase.Mui-disabled:not(.Mui-checked) .MuiSwitch-thumb": {
+              backgroundColor: statusColorValue
+            },
+            "& .MuiSwitch-switchBase.Mui-disabled.Mui-checked + .MuiSwitch-track": {
+              backgroundColor: alpha(statusColorValue, 0.4),
+              opacity: 1
+            },
+            "& .MuiSwitch-switchBase.Mui-disabled.Mui-checked .MuiSwitch-thumb": {
               backgroundColor: statusColorValue
             }
           }}
