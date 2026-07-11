@@ -16,13 +16,10 @@
 
 ## 界面预览
 
-### 主窗口
-
-![Nav-Bridge 主窗口](docs/screenshots/main.png)
-
-### 监控窗口
-
-![Nav-Bridge 监控窗口](docs/screenshots/monitor.png)
+<p align="center">
+  <img src="docs/screenshots/main.png" alt="Nav-Bridge 主窗口" width="45.5%" />
+  <img src="docs/screenshots/monitor.png" alt="Nav-Bridge 监控窗口" width="50%" />
+</p>
 
 ## 环境要求
 
