@@ -13,6 +13,9 @@ const mockGetAppPath = jest.fn(() => "/app/path");
 const mockSave = jest.fn();
 
 jest.mock("electron", () => ({
+  BrowserWindow: {
+    getAllWindows: jest.fn(() => [])
+  },
   app: {
     getAppPath: mockGetAppPath
   },
@@ -38,7 +41,9 @@ jest.mock("serialport", () => ({
 jest.mock("../../main/config/ConfigStore", () => ({
   ConfigStore: jest.fn().mockImplementation(() => ({
     load: jest.fn(),
-    save: mockSave
+    save: mockSave,
+    loadThemeMode: jest.fn(() => "system"),
+    saveThemeMode: jest.fn()
   }))
 }));
 
@@ -238,5 +243,35 @@ describe("IpcBridge validation timing", () => {
       expect.anything(),
       expect.objectContaining({ defaultPath: "/app/path" })
     );
+  });
+
+  it("registers loadThemeMode and saveThemeMode handlers", () => {
+    const bridge = new IpcBridge(createWindow() as never);
+    bridge.register();
+
+    expect(mockHandlers.get(ipcChannels.loadThemeMode)).toBeDefined();
+    expect(mockHandlers.get(ipcChannels.saveThemeMode)).toBeDefined();
+  });
+
+  it("loadThemeMode returns the stored theme mode", () => {
+    const bridge = new IpcBridge(createWindow() as never);
+    bridge.register();
+
+    const handler = mockHandlers.get(ipcChannels.loadThemeMode) as () => string;
+    expect(handler()).toBe("system");
+  });
+
+  it("saveThemeMode stores the theme mode", async () => {
+    const bridge = new IpcBridge(createWindow() as never);
+    bridge.register();
+
+    const handler = mockHandlers.get(ipcChannels.saveThemeMode) as (
+      _event: { sender: { id: number } },
+      mode: string
+    ) => void;
+    handler({ sender: { id: 1 } }, "dark");
+
+    const store = (bridge as unknown as { configStore: { saveThemeMode: jest.Mock } }).configStore;
+    expect(store.saveThemeMode).toHaveBeenCalledWith("dark");
   });
 });

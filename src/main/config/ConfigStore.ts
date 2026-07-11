@@ -1,4 +1,5 @@
 import Store from "electron-store";
+import { type ThemeMode } from "../../shared/theme";
 import { defaultStreamConfig, type StreamConfig } from "../../shared/stream";
 
 export interface WindowBounds {
@@ -11,13 +12,15 @@ export interface WindowBounds {
 interface StoreSchema {
   streamConfig: StreamConfig;
   windowBounds?: WindowBounds;
+  themeMode?: ThemeMode;
 }
 
 export class ConfigStore {
   private readonly store = new Store<StoreSchema>({
     name: "nav-bridge",
     defaults: {
-      streamConfig: defaultStreamConfig
+      streamConfig: defaultStreamConfig,
+      themeMode: "system"
     }
   });
 
@@ -35,5 +38,13 @@ export class ConfigStore {
 
   public saveWindowBounds(bounds: WindowBounds): void {
     this.store.set("windowBounds", bounds);
+  }
+
+  public loadThemeMode(): ThemeMode {
+    return this.store.get("themeMode", "system");
+  }
+
+  public saveThemeMode(mode: ThemeMode): void {
+    this.store.set("themeMode", mode);
   }
 }

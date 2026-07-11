@@ -65,3 +65,37 @@ sx={{
 Electron 在 Windows 上实现无边框自定义标题栏时，标题栏移动优先使用 `-webkit-app-region: drag`。除非确实需要完全自定义窗口管理，否则不要用 JS 循环调用 `BrowserWindow.setPosition()` 模拟拖动。
 
 如果必须实现自定义 resize，应把 resize 区域和 drag 区域明确分离，避免同一块 UI 同时承担拖动和拉伸职责。
+
+# 2. 主窗口与 Monitor 窗口开启时黑白闪烁
+
+## 现象
+
+打开 Nav-Bridge 主窗口或 Stream Monitor 窗口时，无论当前主题是深色还是浅色，都会先看到黑色轮廓，然后闪过白色底色，最后才显示为最终主题色。Monitor 窗口还会始终渲染成浅色，无法跟随主窗口的主题设置。
+
+## 原因
+
+1. **主题不同步**：主窗口原先把主题模式保存在 `localStorage`。但 Electron 中 `index.html` 与 `monitor.html` 属于不同的 `file://` 源，`localStorage` 不共享，导致 Monitor 读不到主窗口的主题，只能回退到系统主题。
+2. **白色底色闪烁**：`BrowserWindow` 默认背景色是白色，在 React/MUI 渲染之前，客户区会先显示一块白光。
+3. **黑色轮廓**：Windows 下 `frame: false` 无边框窗口创建瞬间，DWM 会先绘制窗口阴影/边框，随后才显示内容。
+
+## 解决方法
+
+- 将主题模式存放到主进程的 `electron-store`（`ConfigStore`），让所有窗口共享同一份配置。
+- 主进程在创建窗口前解析主题（`system` 时使用 `nativeTheme.shouldUseDarkColors`），并给 `BrowserWindow` 设置与主题一致的 `backgroundColor`。
+- 两个窗口都使用 `show: false`，在 `ready-to-show` 时再 `show()`，避免在内容渲染前暴露默认底色和阴影。
+- 通过 URL query 把主题模式同步传给 renderer，保证 React 首帧就能拿到正确主题。
+- 新增 `loadThemeMode` / `saveThemeMode` / `themeModeChanged` IPC，主窗口切换主题时实时广播给 Monitor。
+
+## 测试与防回退
+
+- `src/shared/theme.ts` 覆盖 `resolveThemeMode` 与背景色常量。
+- `src/test/main/index.test.ts` 验证主窗口设置 `backgroundColor`、`show: false`、`ready-to-show` 和 theme query。
+- `src/test/main/monitorWindow.test.ts` 验证 Monitor 窗口接受主题参数、设置背景色、延迟显示和传递 query。
+- `src/test/preload/themeIpc.test.ts` 验证 preload 暴露主题 IPC。
+- `src/test/main/bridge.validation.test.ts` 验证 `loadThemeMode` / `saveThemeMode` handler 注册与调用。
+
+## 经验结论
+
+Electron 无边框窗口要避免打开时的颜色闪烁，必须在**创建窗口前**就把 `backgroundColor` 设置为当前主题色，并延迟到第一帧渲染完成再显示。同时，多窗口间的主题状态不要依赖 `localStorage`，应通过主进程共享存储或 IPC 同步。
+
+关联问题：#06

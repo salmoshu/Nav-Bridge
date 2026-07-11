@@ -1,4 +1,4 @@
-import { BrowserWindow as ElectronBrowserWindow } from "electron";
+import { BrowserWindow as ElectronBrowserWindow, nativeTheme } from "electron";
 import { join } from "node:path";
 import { ipcChannels } from "../../shared/ipc";
 import {
@@ -7,6 +7,7 @@ import {
   pushMonitorEntry
 } from "../../shared/monitorLimits";
 import type { LogEntry, StreamDataEntry, StreamStatus } from "../../shared/stream";
+import { resolveThemeMode, themeBackgroundColors, type ThemeMode } from "../../shared/theme";
 
 const monitorWidth = 720;
 const monitorHeight = 460;
@@ -34,11 +35,13 @@ function flushMonitorData(): void {
   }
 }
 
-export function createMonitorWindow(): ElectronBrowserWindow {
+export function createMonitorWindow(themeMode: ThemeMode): ElectronBrowserWindow {
   if (monitorWindow != undefined && !monitorWindow.isDestroyed()) {
     monitorWindow.focus();
     return monitorWindow;
   }
+
+  const resolvedMode = resolveThemeMode(themeMode, nativeTheme.shouldUseDarkColors);
 
   monitorWindow = new ElectronBrowserWindow({
     width: monitorWidth,
@@ -47,6 +50,8 @@ export function createMonitorWindow(): ElectronBrowserWindow {
     minHeight: 300,
     title: "Stream Monitor - Nav-Bridge",
     frame: false,
+    backgroundColor: themeBackgroundColors[resolvedMode],
+    show: false,
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
@@ -61,15 +66,22 @@ export function createMonitorWindow(): ElectronBrowserWindow {
     flushMonitorData();
   });
 
+  monitorWindow.once("ready-to-show", () => {
+    monitorWindow?.show();
+  });
+
   monitorWindow.on("closed", () => {
     monitorWindow = undefined;
     monitorReady = false;
   });
 
+  const query: Record<string, string> = { themeMode };
   if (process.env.ELECTRON_RENDERER_URL != undefined) {
-    void monitorWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/monitor.html`);
+    void monitorWindow.loadURL(
+      `${process.env.ELECTRON_RENDERER_URL}/monitor.html?themeMode=${encodeURIComponent(themeMode)}`
+    );
   } else {
-    void monitorWindow.loadFile(join(__dirname, "../../renderer/monitor.html"));
+    void monitorWindow.loadFile(join(__dirname, "../../renderer/monitor.html"), { query });
   }
 
   return monitorWindow;

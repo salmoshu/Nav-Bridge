@@ -1,6 +1,7 @@
 import { Box, Container, CssBaseline, Stack, ThemeProvider, useMediaQuery } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { defaultStreamConfig, type StreamConfig } from "../shared/stream";
+import { resolveThemeMode, type ThemeMode } from "../shared/theme";
 import { AppTitleBar } from "./components/AppTitleBar";
 import { BottomActionBar } from "./components/BottomActionBar";
 import { EndpointTable } from "./components/EndpointTable";
@@ -10,7 +11,15 @@ import { WindowResizeHandles } from "./components/WindowResizeHandles";
 import { useNavBridgeAPI } from "./hooks/useNavBridgeAPI";
 import { useStreamStatus } from "./hooks/useStreamStatus";
 import { createAppTheme } from "./theme";
-import { loadThemeMode, resolveThemeMode, saveThemeMode, type ThemeMode } from "./lib/themeMode";
+
+function readInitialThemeMode(): ThemeMode {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("themeMode");
+  if (mode === "light" || mode === "dark" || mode === "system") {
+    return mode;
+  }
+  return "system";
+}
 
 export function App() {
   const api = useNavBridgeAPI();
@@ -18,7 +27,7 @@ export function App() {
   const [config, setConfig] = useState<StreamConfig>(defaultStreamConfig);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [error, setError] = useState<string>();
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadThemeMode());
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => readInitialThemeMode());
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
@@ -37,8 +46,8 @@ export function App() {
   }, [api]);
 
   useEffect(() => {
-    saveThemeMode(themeMode);
-  }, [themeMode]);
+    void api.saveThemeMode(themeMode);
+  }, [api, themeMode]);
 
   useEffect(() => {
     return api.onAlwaysOnTopChange(setAlwaysOnTop);

@@ -97,3 +97,27 @@ describe("window z-order handling", () => {
     expect(source).toContain("window.moveTop()");
   });
 });
+
+describe("MonitorWindow theme integration", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "src/main/monitor/MonitorWindow.ts"), "utf-8");
+
+  it("accepts the initial theme mode from the main process", () => {
+    expect(source).toMatch(/export function createMonitorWindow\(\s*themeMode:\s*ThemeMode\s*\)/);
+  });
+
+  it("sets a background color matching the resolved theme", () => {
+    expect(source).toContain("backgroundColor: themeBackgroundColors[resolvedMode]");
+    expect(source).toContain("resolveThemeMode(themeMode, nativeTheme.shouldUseDarkColors)");
+  });
+
+  it("hides the window until the first paint to avoid flash", () => {
+    expect(source).toContain("show: false");
+    expect(source).toContain('"ready-to-show"');
+    expect(source).toContain("monitorWindow?.show()");
+  });
+
+  it("passes the theme mode to the renderer via query string", () => {
+    expect(source).toContain("themeMode=${encodeURIComponent(themeMode)}");
+    expect(source).toContain("{ query }");
+  });
+});

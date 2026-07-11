@@ -1,5 +1,4 @@
-import type { BrowserWindow } from "electron";
-import { app, dialog, ipcMain, screen } from "electron";
+import { BrowserWindow, app, dialog, ipcMain, screen } from "electron";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { SerialPort } from "serialport";
@@ -13,6 +12,7 @@ import type {
   StreamMode,
   StreamStatus
 } from "../../shared/stream";
+import type { ThemeMode } from "../../shared/theme";
 import { ConfigStore } from "../config/ConfigStore";
 import { validateDuplicateClientEndpoints, validateStreamConfig } from "../config/validateStreamConfig";
 import {
@@ -58,9 +58,11 @@ export class IpcBridge {
     ipcMain.removeHandler(ipcChannels.closeMonitorWindow);
     ipcMain.removeHandler(ipcChannels.clearMonitorCache);
     ipcMain.removeHandler(ipcChannels.showFileDialog);
+    ipcMain.removeHandler(ipcChannels.loadThemeMode);
+    ipcMain.removeHandler(ipcChannels.saveThemeMode);
 
     ipcMain.handle(ipcChannels.openMonitorWindow, () => {
-      createMonitorWindow();
+      createMonitorWindow(this.configStore.loadThemeMode());
       setMonitorAlwaysOnTop(this.window.isAlwaysOnTop());
     });
 
@@ -86,6 +88,13 @@ export class IpcBridge {
       }
       const result = await dialog.showSaveDialog(this.window, { defaultPath });
       return !result.canceled && result.filePath ? result.filePath : undefined;
+    });
+
+    ipcMain.handle(ipcChannels.loadThemeMode, () => this.configStore.loadThemeMode());
+
+    ipcMain.handle(ipcChannels.saveThemeMode, (_event, mode: ThemeMode) => {
+      this.configStore.saveThemeMode(mode);
+      this.broadcastThemeModeChange(mode, _event.sender);
     });
 
     ipcMain.handle(
@@ -275,5 +284,13 @@ export class IpcBridge {
       this.window.webContents.send(ipcChannels.data, entry);
     }
     sendMonitorData(entry);
+  }
+
+  private broadcastThemeModeChange(mode: ThemeMode, sender: Electron.WebContents): void {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.webContents.isDestroyed() && win.webContents.id !== sender.id) {
+        win.webContents.send(ipcChannels.themeModeChanged, mode);
+      }
+    }
   }
 }

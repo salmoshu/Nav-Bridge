@@ -1,8 +1,9 @@
-import { app, BrowserWindow, screen } from "electron";
+import { BrowserWindow, app, nativeTheme, screen } from "electron";
 import { join } from "node:path";
 import { ConfigStore, type WindowBounds } from "./config/ConfigStore";
 import { IpcBridge } from "./ipc/bridge";
 import { destroyMonitorWindow, sendMonitorLog } from "./monitor/MonitorWindow";
+import { resolveThemeMode, themeBackgroundColors } from "../shared/theme";
 import { createMainWindowOptions } from "./windowOptions";
 
 const configStore = new ConfigStore();
@@ -49,13 +50,21 @@ function resolveWindowBounds(saved?: WindowBounds): Partial<Electron.Rectangle> 
 
 function createWindow(): void {
   const bounds = resolveWindowBounds(configStore.loadWindowBounds());
+  const themeMode = configStore.loadThemeMode();
+  const resolvedMode = resolveThemeMode(themeMode, nativeTheme.shouldUseDarkColors);
   const mainWindow = new BrowserWindow({
     ...createMainWindowOptions(),
-    ...bounds
+    ...bounds,
+    backgroundColor: themeBackgroundColors[resolvedMode],
+    show: false
   });
 
   const bridge = new IpcBridge(mainWindow, configStore);
   bridge.register();
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
+  });
 
   mainWindow.on("close", () => {
     configStore.saveWindowBounds(mainWindow.getBounds());
@@ -66,10 +75,13 @@ function createWindow(): void {
     void bridge.dispose();
   });
 
+  const query: Record<string, string> = { themeMode };
   if (process.env.ELECTRON_RENDERER_URL != undefined) {
-    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+    void mainWindow.loadURL(
+      `${process.env.ELECTRON_RENDERER_URL}?themeMode=${encodeURIComponent(themeMode)}`
+    );
   } else {
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"), { query });
   }
 }
 

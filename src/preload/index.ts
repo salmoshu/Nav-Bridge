@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { NavBridgeAPI, SerialPortInfo, WindowResizeEdge } from "../shared/ipc";
 import { ipcChannels } from "../shared/ipc";
 import type { LogEntry, StreamConfig, StreamDataEntry, StreamMode, StreamStatus } from "../shared/stream";
+import type { ThemeMode } from "../shared/theme";
 
 const api: NavBridgeAPI = {
   startServer: async (config: StreamConfig) => await ipcRenderer.invoke(ipcChannels.startServer, config),
@@ -40,6 +41,15 @@ const api: NavBridgeAPI = {
   },
   showFileDialog: async (mode: StreamMode, suggestedPath?: string) =>
     await ipcRenderer.invoke(ipcChannels.showFileDialog, mode, suggestedPath),
+  loadThemeMode: async () => await ipcRenderer.invoke(ipcChannels.loadThemeMode),
+  saveThemeMode: async (mode: ThemeMode) => {
+    await ipcRenderer.invoke(ipcChannels.saveThemeMode, mode);
+  },
+  onThemeModeChange: (callback: (mode: ThemeMode) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, mode: ThemeMode): void => callback(mode);
+    ipcRenderer.on(ipcChannels.themeModeChanged, listener);
+    return () => ipcRenderer.off(ipcChannels.themeModeChanged, listener);
+  },
   onStatus: (callback: (status: StreamStatus) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, status: StreamStatus): void => callback(status);
     ipcRenderer.on(ipcChannels.status, listener);
