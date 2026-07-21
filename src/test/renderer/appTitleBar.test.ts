@@ -17,7 +17,9 @@ describe("AppTitleBar", () => {
   });
 
   it("renders the logo image and version text next to the title", () => {
-    expect(source).toContain("/logo.svg");
+    expect(source).toContain('import logoUrl from "../assets/logo.svg";');
+    expect(source).toContain("src={logoUrl}");
+    expect(source).not.toContain('src="/logo.svg"');
     expect(source).toContain("__APP_VERSION__");
     expect(source).toContain("V{__APP_VERSION__}");
     expect(source).not.toContain('APP_VERSION = "V0.0.1-20260708"');

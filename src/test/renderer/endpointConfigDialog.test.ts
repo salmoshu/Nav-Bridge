@@ -29,6 +29,12 @@ describe("EndpointConfigDialog source", () => {
     expect(source).toContain("formatSerialPortLabel");
   });
 
+  it("renames the endpoint type field to network protocol", () => {
+    const source = readSource();
+    expect(source).toContain('label="网络协议"');
+    expect(source).not.toContain('label="Type"');
+  });
+
   it("does not render a manual refresh button", () => {
     const source = readSource();
     expect(source).not.toContain("RefreshIcon");
@@ -61,7 +67,7 @@ describe("EndpointConfigDialog source", () => {
 
   it("gives Port and Baud the same full width as the Type dropdown", () => {
     const source = readSource();
-    const typeIndex = source.indexOf('label="Type"');
+    const typeIndex = source.indexOf('label="网络协议"');
     const portIndex = source.indexOf('label="Serial port"');
     const baudIndex = source.indexOf('label="Baud"');
     expect(source.slice(typeIndex, typeIndex + 500)).toContain("fullWidth");

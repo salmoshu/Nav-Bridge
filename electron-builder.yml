@@ -1,0 +1,45 @@
+appId: com.nav-bridge.app
+productName: Nav-Bridge
+copyright: Copyright © 2026
+
+directories:
+  buildResources: resources
+  output: dist
+
+# 打包阶段下载 Electron 运行时走国内镜像（.npmrc 的 electron_mirror 只在 pnpm install 时生效）
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
+
+files:
+  - out/**/*
+  - package.json
+  - "!node_modules/.ignored_*"
+
+asarUnpack:
+  - node_modules/serialport/**/*
+  - node_modules/@serialport/**/*
+
+win:
+  target:
+    - nsis
+    - portable
+  icon: resources/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.utilities
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+  maintainer: Nav-Bridge Team

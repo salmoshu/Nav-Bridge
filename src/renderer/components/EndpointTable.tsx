@@ -187,7 +187,7 @@ export function EndpointTable({
           <span>#</span>
           <span>Enable</span>
           <span>Role</span>
-          <span>Type</span>
+          <span>网络协议</span>
           <span>Path</span>
           <span style={{ whiteSpace: "nowrap" }}>
             Bytes

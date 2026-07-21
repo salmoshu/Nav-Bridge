@@ -166,6 +166,18 @@ describe("endpointGridColumns", () => {
     expect(source).toContain("onBlur={() => setFocused(false)}");
   });
 
+  it("renames the endpoint type column to network protocol", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/components/EndpointTable.tsx"),
+      "utf-8"
+    );
+
+    expect(source).toContain("<span>网络协议</span>");
+    expect(source).not.toContain("<span>Type</span>");
+  });
+
   it("allows file endpoints to be edited as a plain path in the Path cell", () => {
     const fs = require("node:fs") as typeof import("node:fs");
     const path = require("node:path") as typeof import("node:path");

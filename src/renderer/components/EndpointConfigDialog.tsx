@@ -105,7 +105,7 @@ export function EndpointConfigDialog({
         <Stack spacing={1.25}>
           <TextField
             select
-            label="Type"
+            label="网络协议"
             value={draft.type}
             onChange={(event) => handleTypeChange(event.target.value as StreamType)}
             fullWidth

@@ -3,6 +3,7 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { Box, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import logoUrl from "../assets/logo.svg";
 import { useNavBridgeAPI } from "../hooks/useNavBridgeAPI";
 import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
@@ -44,7 +45,7 @@ export function AppTitleBar({
       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
         <Box
           component="img"
-          src="/logo.svg"
+          src={logoUrl}
           alt=""
           width={22}
           height={22}
