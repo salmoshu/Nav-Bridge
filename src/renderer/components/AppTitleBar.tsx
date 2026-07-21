@@ -8,31 +8,6 @@ import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
 import { ThemeModeSelector } from "./ThemeModeSelector";
 
-function ElectronLogoPlaceholder({ size = 18 }: { size?: number }) {
-  const theme = useTheme();
-  const logoBlue = theme.palette.primary.main;
-
-  return (
-    <Box
-      component="svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={logoBlue}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" fill={logoBlue} stroke="none" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
-    </Box>
-  );
-}
-
 export interface AppTitleBarProps {
   alwaysOnTop: boolean;
   themeMode: ThemeMode;
@@ -67,7 +42,15 @@ export function AppTitleBar({
       }}
     >
       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-        <ElectronLogoPlaceholder />
+        <Box
+          component="img"
+          src="/logo.svg"
+          alt=""
+          width={22}
+          height={22}
+          sx={{ display: "block" }}
+          aria-hidden="true"
+        />
         <Box sx={{ display: "inline-flex", alignItems: "baseline", gap: 0.5 }}>
           <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
             Nav-Bridge

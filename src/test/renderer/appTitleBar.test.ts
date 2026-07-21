@@ -16,8 +16,8 @@ describe("AppTitleBar", () => {
     expect(source).not.toContain("running");
   });
 
-  it("renders the logo placeholder and version text next to the title", () => {
-    expect(source).toContain("ElectronLogoPlaceholder");
+  it("renders the logo image and version text next to the title", () => {
+    expect(source).toContain("/logo.svg");
     expect(source).toContain("__APP_VERSION__");
     expect(source).toContain("V{__APP_VERSION__}");
     expect(source).not.toContain('APP_VERSION = "V0.0.1-20260708"');

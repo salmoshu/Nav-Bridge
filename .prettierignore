@@ -4,4 +4,4 @@ coverage/
 tmp/
 .agents/
 .git/
-yarn.lock
+pnpm-lock.yaml

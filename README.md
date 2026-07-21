@@ -24,7 +24,7 @@
 ## 环境要求
 
 - Node.js >= 20
-- Yarn 1.22.x
+- pnpm >= 10
 - Windows、Linux 或 macOS
 
 > 串口功能依赖 `serialport` 原生模块。跨平台打包时可能需要重新构建原生依赖。
@@ -33,19 +33,19 @@
 
 ```powershell
 # 安装依赖
-yarn install
+pnpm install
 
 # 启动开发模式
-yarn dev
+pnpm dev
 ```
 
 常用命令：
 
 ```powershell
-yarn test        # 运行测试
-yarn typecheck   # TypeScript 类型检查
-yarn build       # 构建生产包
-yarn start       # 预览生产包
+pnpm test        # 运行测试
+pnpm typecheck   # TypeScript 类型检查
+pnpm build       # 构建生产包
+pnpm start       # 预览生产包
 ```
 
 ## 使用方式
@@ -83,7 +83,7 @@ src/
 项目使用 Jest 覆盖核心链路：
 
 ```powershell
-yarn test
+pnpm test
 ```
 
 当前测试覆盖：
@@ -117,7 +117,7 @@ yarn test
 
 ## 国内网络注意事项
 
-项目已配置 `.yarnrc`，默认使用 npmmirror 镜像：
+项目已配置 `.npmrc`，默认使用 npmmirror 镜像：
 
 - npm 包 registry：`https://registry.npmmirror.com`
 - Electron 二进制镜像：`https://npmmirror.com/mirrors/electron/`
@@ -127,13 +127,13 @@ yarn test
 ```powershell
 # PowerShell
 $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
-yarn install --check-files
+pnpm install
 ```
 
 ```sh
 # Git Bash / Linux / macOS
 export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
-yarn install --check-files
+pnpm install
 ```
 
 ## 参考项目

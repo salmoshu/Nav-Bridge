@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    :root {
+      --bridge: #42a5f5;
+      --stream: #66bb6a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bridge: #74b7ff;
+        --stream: #9ee493;
+      }
+    }
+  </style>
+
+  <!-- 悬索桥塔 -->
+  <path d="M28 16 v88 M100 16 v88" stroke="var(--bridge)" stroke-width="12" stroke-linecap="round"/>
+  <!-- 主缆 -->
+  <path d="M28 26 C46 42, 82 42, 100 26" fill="none" stroke="var(--bridge)" stroke-width="10" stroke-linecap="round"/>
+  <!-- 桥面 -->
+  <path d="M20 96 h88" stroke="var(--bridge)" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- 数据流 -->
+  <path d="M34 82 h12 M56 82 h12 M78 82 h12" stroke="var(--stream)" stroke-width="8" stroke-linecap="round"/>
+</svg>

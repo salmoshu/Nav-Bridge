@@ -1,0 +1,8 @@
+# pnpm 配置
+# 允许以下依赖在安装时运行构建脚本（Electron 二进制下载、原生模块编译等）
+# 注意：pnpm v11 已移除 onlyBuiltDependencies，统一使用 allowBuilds
+allowBuilds:
+  "@serialport/bindings-cpp": true
+  electron: true
+  esbuild: true
+  unrs-resolver: true

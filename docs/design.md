@@ -305,7 +305,7 @@ Nav-Bridge/
 ├── index.html
 ├── monitor.html
 ├── jest.config.cjs
-├── yarn.lock
+├── pnpm-lock.yaml
 └── .prettierrc.yaml
 ```
 
@@ -324,7 +324,7 @@ Nav-Bridge/
 | TCP/UDP  | Node.js `net` / `dgram`                     | 原生模块，无需额外依赖。                                                                                  |
 | 文件     | Node.js `fs/promises`                       | 读写普通文件和 RTKLIB `.tag` 时间戳文件。                                                                 |
 | 测试     | Jest + ts-jest                              | 与 Lichtblick 测试栈一致。                                                                                |
-| 包管理   | Yarn 1.22.x                                 | 使用 Yarn Classic 管理依赖，提交 `yarn.lock` 保证安装可复现。                                             |
+| 包管理   | pnpm                                        | 使用 pnpm 管理依赖，提交 `pnpm-lock.yaml` 保证安装可复现。                                                |
 | 代码规范 | ESLint + Prettier                           | 参考 Lichtblick 配置。                                                                                    |
 
 ### 7.1 与 Lichtblick 技术栈的映射

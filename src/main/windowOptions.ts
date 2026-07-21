@@ -17,6 +17,7 @@ export function createMainWindowOptions(): BrowserWindowConstructorOptions {
     maxHeight: appWindowMaxHeight,
     resizable: false,
     title: "Nav-Bridge",
+    icon: join(__dirname, "../renderer/favicon.ico"),
     frame: false,
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),
