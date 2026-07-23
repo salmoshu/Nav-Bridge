@@ -66,12 +66,6 @@ tmp/
 .temp/
 .cache/
 
-# Brainstorming visual companion artifacts
-.superpowers/
-
-# Git worktrees
-.worktrees/
-
 # Native module build artifacts
 prebuilds/
 build/Release/
