@@ -105,10 +105,20 @@ export class StreamServer {
   }
 
   public getStatus(): StreamStatus {
+    this.syncInputStatus();
     for (const [index, output] of this.outputs.entries()) {
       this.syncOutputStatus(index, output);
     }
     return this.statistics.snapshot(this.running);
+  }
+
+  private syncInputStatus(): void {
+    if (!this.running || this.input.type !== "file") {
+      return;
+    }
+    if (this.input.getStatus().status === "idle") {
+      this.statistics.setInputStatus("idle");
+    }
   }
 
   private syncOutputStatus(index: number, output: StreamAdapter): void {
@@ -171,7 +181,8 @@ export class StreamServer {
             }
           })
         );
-        this.emitStatus();
+        // Status is broadcast on the statusTimer interval; emitting per chunk
+        // would flood IPC and re-render the windows for every read.
       } catch (error) {
         this.statistics.setInputStatus("error", this.toErrorMessage(error));
         this.emitStatus();

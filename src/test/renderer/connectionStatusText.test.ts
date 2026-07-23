@@ -85,9 +85,7 @@ describe("buildStatusLine", () => {
   });
 
   it("shows raw status for idle and connecting server outputs", () => {
-    const status = makeStatus({ status: "idle" }, [
-      { type: "tcp-server", status: "connecting" }
-    ]);
+    const status = makeStatus({ status: "idle" }, [{ type: "tcp-server", status: "connecting" }]);
     expect(buildStatusLine(status)).toBe("(0)idle(1)connecting");
   });
 
@@ -122,6 +120,17 @@ describe("buildStatusLine", () => {
   it("ignores smooth uptime when input is not connected", () => {
     const status = makeStatus({ status: "idle" });
     expect(buildStatusLine(status, 99)).toBe("(0)idle");
+  });
+
+  it("shows playback completion for an idle file input while the server is running", () => {
+    const status = makeStatus({ type: "file", status: "idle" });
+    expect(buildStatusLine(status)).toBe("(0)stopped · file playback complete");
+  });
+
+  it("shows ordinary idle after a file server is manually stopped", () => {
+    const status = makeStatus({ type: "file", status: "idle" });
+    status.running = false;
+    expect(buildStatusLine(status)).toBe("(0)idle");
   });
 });
 

@@ -26,7 +26,11 @@ export function buildStatusLine(status?: StreamStatus, inputUptime?: number): st
       : status.input;
 
   const items: string[] = [];
-  items.push(`${formatMetricLabel(0)}${formatMetricValue(inputMetric, 0)}`);
+  if (status.running && inputMetric.type === "file" && inputMetric.status === "idle") {
+    items.push(`${formatMetricLabel(0)}stopped · file playback complete`);
+  } else {
+    items.push(`${formatMetricLabel(0)}${formatMetricValue(inputMetric, 0)}`);
+  }
   status.outputs.forEach((output, index) => {
     if (serverTypes.has(output.type)) {
       items.push(`${formatMetricLabel(index + 1)}${formatMetricValue(output, index + 1)}`);
