@@ -35,4 +35,24 @@ describe("createAdapter", () => {
     expect(createAdapter(endpoint, "input").type).toBe("file");
     expect(createAdapter({ ...endpoint, id: "output-1" }, "output").type).toBe("file");
   });
+
+  it("creates an NTRIP client adapter only for an input endpoint", () => {
+    const endpoint: StreamEndpoint = {
+      id: "input",
+      type: "ntrip-client",
+      enabled: true,
+      params: {
+        host: "127.0.0.1",
+        port: 2101,
+        mountpoint: "RTCM3",
+        username: "user",
+        password: "password"
+      }
+    };
+
+    expect(createAdapter(endpoint, "input").type).toBe("ntrip-client");
+    expect(() => createAdapter({ ...endpoint, id: "output-1" }, "output")).toThrow(
+      "NTRIP client is only supported as an input endpoint"
+    );
+  });
 });

@@ -2,13 +2,15 @@ import { SerialPort } from "serialport";
 import type { SerialParams, StreamAdapterStatus, StreamMode } from "../../../shared/stream";
 import type { StreamAdapter } from "./StreamAdapter";
 import { QueuedReads } from "./queuedReads";
+import { ReceivedStreamTcpServer } from "./ReceivedStreamTcpServer";
 
 export class SerialAdapter implements StreamAdapter {
   public readonly type = "serial";
   private port?: SerialPort;
   private status: StreamAdapterStatus["status"] = "idle";
   private error?: string;
-  private readonly reads = new QueuedReads();
+  private reads = new QueuedReads();
+  private receivedStream?: ReceivedStreamTcpServer;
 
   public constructor(
     public readonly id: string,
@@ -18,7 +20,16 @@ export class SerialAdapter implements StreamAdapter {
 
   public async open(): Promise<void> {
     this.status = "connecting";
+    this.error = undefined;
+    this.reads = new QueuedReads();
     try {
+      if (this.mode === "output" && (this.params.outputTcpPort ?? 0) > 0) {
+        this.receivedStream = new ReceivedStreamTcpServer((error) => {
+          this.error = error.message;
+          this.status = "error";
+        });
+        await this.receivedStream.open(this.params.outputTcpPort!);
+      }
       this.port = new SerialPort({
         path: this.params.port,
         baudRate: this.params.baudRate,
@@ -28,7 +39,10 @@ export class SerialAdapter implements StreamAdapter {
         rtscts: this.params.flowControl === "rtscts",
         autoOpen: false
       });
-      this.port.on("data", (chunk: Buffer) => this.reads.push(chunk));
+      this.port.on("data", (chunk: Buffer) => {
+        if (this.mode === "input") this.reads.push(chunk);
+        this.receivedStream?.write(chunk);
+      });
       this.port.on("error", (error) => {
         this.error = error.message;
         this.status = "error";
@@ -38,15 +52,17 @@ export class SerialAdapter implements StreamAdapter {
       );
       this.status = "connected";
     } catch (error) {
+      await this.close().catch(() => undefined);
       this.error = error instanceof Error ? error.message : String(error);
       this.status = "error";
-      await this.close().catch(() => undefined);
       throw error;
     }
   }
 
   public async close(): Promise<void> {
     this.reads.close();
+    await this.receivedStream?.close();
+    this.receivedStream = undefined;
     if (this.port != undefined && this.port.isOpen) {
       await new Promise<void>((resolve, reject) =>
         this.port?.close((error) => (error ? reject(error) : resolve()))
@@ -86,6 +102,6 @@ export class SerialAdapter implements StreamAdapter {
   }
 
   public getClients(): number {
-    return 0;
+    return this.receivedStream?.getClients() ?? 0;
   }
 }

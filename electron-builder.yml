@@ -1,6 +1,14 @@
 appId: com.nav-bridge.app
 productName: Nav-Bridge
 copyright: Copyright © 2026
+detectUpdateChannel: false
+generateUpdatesFilesForAllChannels: true
+
+publish:
+  provider: github
+  owner: salmoshu
+  repo: Nav-Bridge
+  releaseType: release
 
 directories:
   buildResources: resources
@@ -26,10 +34,14 @@ win:
   icon: resources/icon.ico
 
 nsis:
+  artifactName: Nav-Bridge-Setup-${version}-${arch}.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
+
+portable:
+  artifactName: Nav-Bridge-Portable-${version}-${arch}.${ext}
 
 mac:
   target:

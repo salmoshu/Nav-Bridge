@@ -1,6 +1,7 @@
 import type { SerialPortInfo } from "../../shared/ipc";
 import type {
   FileParams,
+  NtripClientParams,
   SerialParams,
   StreamEndpoint,
   StreamEndpointParams,
@@ -11,17 +12,24 @@ import type {
 export const endpointTypes: StreamType[] = [
   "tcp-server",
   "tcp-client",
+  "ntrip-client",
   "udp-server",
   "udp-client",
   "serial",
   "file"
 ];
 
-export const networkTypes: StreamType[] = ["tcp-server", "tcp-client", "udp-server", "udp-client"];
+export const networkTypes: StreamType[] = [
+  "tcp-server",
+  "tcp-client",
+  "ntrip-client",
+  "udp-server",
+  "udp-client"
+];
 
 export const serverTypes: StreamType[] = ["tcp-server", "udp-server"];
 
-export const clientTypes: StreamType[] = ["tcp-client", "udp-client"];
+export const clientTypes: StreamType[] = ["tcp-client", "ntrip-client", "udp-client"];
 
 export const baudRates = [9600, 19200, 38400, 57600, 115200, 230400];
 
@@ -35,7 +43,7 @@ export const flowControlOptions: SerialParams["flowControl"][] = ["none", "rtsct
 
 export function allowedEndpointTypes(mode: StreamMode): StreamType[] {
   if (mode === "input") {
-    return ["tcp-server", "tcp-client", "udp-server", "serial", "file"];
+    return ["tcp-server", "tcp-client", "ntrip-client", "udp-server", "serial", "file"];
   }
   return ["tcp-server", "tcp-client", "udp-client", "serial", "file"];
 }
@@ -83,12 +91,14 @@ export function endpointSummary(endpoint: StreamEndpoint): string {
       return `TCP server ${networkEndpointDisplay(endpoint)}`;
     case "tcp-client":
       return `TCP client ${networkEndpointDisplay(endpoint)}`;
+    case "ntrip-client":
+      return `NTRIP client ${endpointPath(endpoint)}`;
     case "udp-server":
       return `UDP server ${networkEndpointDisplay(endpoint)}`;
     case "udp-client":
       return `UDP client ${networkEndpointDisplay(endpoint)}`;
     case "serial":
-      return `Serial ${endpointPath(endpoint)}`;
+      return `Serial ${endpointPath(endpoint)}${paramsSerialTcpSummary(endpoint)}`;
     case "file":
       return `File ${endpointPath(endpoint)}`;
     default:
@@ -106,6 +116,11 @@ export function endpointPath(endpoint: StreamEndpoint): string {
     case "udp-server":
     case "udp-client":
       return networkEndpointDisplay(endpoint);
+    case "ntrip-client": {
+      const ntrip = endpoint.params as NtripClientParams;
+      const host = ntrip.host.includes(":") ? `[${ntrip.host}]` : ntrip.host;
+      return `${host}:${ntrip.port}/${ntrip.mountpoint.replace(/^\/+/, "")}`;
+    }
     case "serial":
       return `${params.port}@${params.baudRate}`;
     case "file":
@@ -155,6 +170,7 @@ export function endpointHost(endpoint: StreamEndpoint): string {
     case "udp-server":
       return "0.0.0.0";
     case "tcp-client":
+    case "ntrip-client":
     case "udp-client":
       return typeof params.host === "string" ? params.host : "";
     case "serial":
@@ -168,6 +184,8 @@ export function endpointHost(endpoint: StreamEndpoint): string {
 
 export function defaultParamsForType(type: StreamType): StreamEndpointParams {
   switch (type) {
+    case "ntrip-client":
+      return { host: "", port: 2101, mountpoint: "", username: "", password: "" } satisfies NtripClientParams;
     case "serial":
       return {
         port: "",
@@ -194,6 +212,22 @@ export function defaultParamsForType(type: StreamType): StreamEndpointParams {
     default:
       throw new Error(`Unsupported stream type: ${type}`);
   }
+}
+
+function paramsSerialTcpSummary(endpoint: StreamEndpoint): string {
+  const port = (endpoint.params as SerialParams).outputTcpPort;
+  return endpoint.id !== "input" && port ? ` (RX → TCP :${port})` : "";
+}
+
+export function parseNtripAddress(
+  value: string
+): Pick<NtripClientParams, "host" | "port" | "mountpoint"> | undefined {
+  const match = /^(\[[^\]]+\]|[^/:]+):(\d+)\/(.*)$/.exec(value);
+  if (match == undefined) return undefined;
+  const host = match[1].replace(/^\[|\]$/g, "");
+  const port = Number(match[2]);
+  if (port < 1 || port > 65535) return undefined;
+  return { host, port, mountpoint: match[3] };
 }
 
 export function createEndpointWithType(endpoint: StreamEndpoint, type: StreamType): StreamEndpoint {

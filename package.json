@@ -1,6 +1,6 @@
 {
   "name": "nav-bridge",
-  "version": "0.1.0-20260709",
+  "version": "0.1.1",
   "private": true,
   "description": "A desktop stream bridge for GNSS/navigation data.",
   "author": "salmos.hu",
@@ -9,9 +9,10 @@
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "tsc --noEmit && electron-vite build && electron-builder",
+    "build": "tsc --noEmit && electron-vite build && electron-builder --publish never",
     "start": "electron-vite preview",
     "test": "jest --runInBand",
+    "smoke": "electron-vite build && node scripts/run-electron-smoke.cjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -26,11 +27,14 @@
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "electron-store": "^10.1.0",
-    "serialport": "^12.0.0",
+    "electron-updater": "^6.8.11",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "serialport": "^12.0.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.9.3",
     "@types/react": "^18.3.12",
@@ -40,6 +44,7 @@
     "electron-builder": "^25.1.8",
     "electron-vite": "^3.1.0",
     "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.5.2",
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.5",
     "typescript": "^5.9.3",

@@ -233,16 +233,20 @@ export class IpcBridge {
       .filter((output) => output.enabled)
       .map((output) => createAdapter(output, "output"));
     this.inputHost =
-      config.input.type === "tcp-client" || config.input.type === "udp-client"
+      config.input.type === "tcp-client" ||
+      config.input.type === "udp-client" ||
+      config.input.type === "ntrip-client"
         ? (config.input.params as { host: string }).host
         : undefined;
     this.inputPort =
-      config.input.type === "tcp-client" || config.input.type === "udp-client"
+      config.input.type === "tcp-client" ||
+      config.input.type === "udp-client" ||
+      config.input.type === "ntrip-client"
         ? (config.input.params as { port: number }).port
         : undefined;
     this.lastInputStatus = "idle";
     this.firstDataLogged = false;
-    return new StreamServer(createAdapter(config.input, "input"), outputs, {
+    return new StreamServer(createAdapter(config.input, "input", config.options), outputs, {
       bufferSize: config.options.bufferSize,
       statusInterval: config.options.statusInterval
     });

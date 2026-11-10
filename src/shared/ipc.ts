@@ -1,5 +1,6 @@
 import type { LogEntry, StreamConfig, StreamDataEntry, StreamStatus, StreamMode } from "./stream";
 import type { ThemeMode } from "./theme";
+import type { AppUpdateState } from "./update";
 
 export interface SerialPortInfo {
   path: string;
@@ -19,6 +20,10 @@ export interface StartServerResult {
 export type WindowResizeEdge = "top" | "bottom";
 
 export interface NavBridgeAPI {
+  getUpdateState(): Promise<AppUpdateState>;
+  checkForUpdates(): Promise<AppUpdateState>;
+  installUpdate(): Promise<AppUpdateState>;
+  onUpdateStateChange(callback: (state: AppUpdateState) => void): () => void;
   startServer(config: StreamConfig): Promise<StartServerResult>;
   stopServer(): Promise<void>;
   loadConfig(): Promise<StreamConfig>;
@@ -44,6 +49,10 @@ export interface NavBridgeAPI {
 }
 
 export const ipcChannels = {
+  getUpdateState: "nav-bridge:update-state",
+  checkForUpdates: "nav-bridge:update-check",
+  installUpdate: "nav-bridge:update-install",
+  updateStateChanged: "nav-bridge:update-state-changed",
   startServer: "nav-bridge:start-server",
   stopServer: "nav-bridge:stop-server",
   loadConfig: "nav-bridge:load-config",

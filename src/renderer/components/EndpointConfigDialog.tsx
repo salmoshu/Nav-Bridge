@@ -179,6 +179,36 @@ export function EndpointConfigDialog({
             />
           )}
 
+          {draft.type === "ntrip-client" && (
+            <>
+              <TextField
+                label="Mountpoint"
+                fullWidth
+                value={String(params.mountpoint ?? "")}
+                onChange={(event) => updateParam("mountpoint", event.target.value)}
+                helperText="Caster mountpoint, for example RTCM3."
+                InputLabelProps={{ shrink: true }}
+              />
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="Username (optional)"
+                  fullWidth
+                  value={String(params.username ?? "")}
+                  onChange={(event) => updateParam("username", event.target.value)}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Password (optional)"
+                  type="password"
+                  fullWidth
+                  value={String(params.password ?? "")}
+                  onChange={(event) => updateParam("password", event.target.value)}
+                  autoComplete="new-password"
+                />
+              </Stack>
+            </>
+          )}
+
           {isFileEndpoint(draft) && (
             <>
               <TextField
@@ -298,6 +328,34 @@ export function EndpointConfigDialog({
                   </MenuItem>
                 ))}
               </TextField>
+              {mode === "output" && (
+                <>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={(serialParams.outputTcpPort ?? 0) > 0}
+                        onChange={(event) =>
+                          updateParam("outputTcpPort", event.target.checked ? 2102 : undefined)
+                        }
+                      />
+                    }
+                    label="Output received stream to TCP port"
+                  />
+                  {(serialParams.outputTcpPort ?? 0) > 0 && (
+                    <TextField
+                      label="Received stream TCP port"
+                      type="number"
+                      fullWidth
+                      value={serialParams.outputTcpPort}
+                      onChange={(event) => updateParam("outputTcpPort", Number(event.target.value) || 0)}
+                      inputProps={{ min: 1, max: 65535 }}
+                      helperText="Listens on 0.0.0.0. Broadcasts data received from this serial device to TCP clients."
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  )}
+                </>
+              )}
               <FormControlLabel
                 control={
                   <Switch

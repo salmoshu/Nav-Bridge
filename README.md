@@ -7,7 +7,9 @@
 ## 功能特性
 
 - **透明转发**：从 1 路输入读取原始字节，写入多路输出。
-- **多种传输类型**：支持 TCP Server、TCP Client、UDP Server、UDP Client、Serial 和 File。
+- **多种传输类型**：支持 TCP Server、TCP Client、NTRIP Client 输入、UDP Server、UDP Client、Serial 和 File。
+- **串口接收转发**：Serial 输出可启用「Output received stream to TCP port」，将设备回传数据广播给 TCP 客户端。
+- **应用更新**：安装版在启动时自动检查、下载新版，点击标题栏版本号查看进度，下载完成后点击右侧「更新」确认重启安装。
 - **文件回放**：File 输入 / 输出支持 RTKLIB 风格的 `.tag` 时间戳文件，可按原始采集节奏回放数据。
 - **运行监控**：实时展示输入和每路输出的连接状态、累计字节数和实时 bps。
 - **桌面 UI**：基于 Electron、React 18 和 MUI 7，支持浅色 / 深色主题。
@@ -63,6 +65,10 @@ pnpm start       # 预览生产包
 - 输入：`tcp-server://0.0.0.0:2101`
 - 输出：`udp-client://127.0.0.1:2201`
 
+NTRIP 输入：选择 **NTRIP Client**，在配置窗口填写 Caster 的 Host、Port（通常为 `2101`）、Mountpoint 及可选账号密码。支持 ICY / HTTP 响应、HTTP 分块传输和断线重连；重连间隔、无数据超时使用 Options 中的对应设置，值为 `0` 时关闭该项机制。
+
+Serial 输出：在配置窗口启用 **Output received stream to TCP port** 并设置端口，例如 `3000`。TCP 客户端连接 `本机 IP:3000` 后接收该串口设备发回的原始数据。主输入仍写入串口，TCP 客户端发来的数据不会写入串口。
+
 ## 项目结构
 
 ```text
@@ -99,6 +105,7 @@ pnpm test
 
 - [设计方案](./docs/design.md)
 - [实现架构](./docs/architecture.md)
+- [应用更新与发布](./docs/updates.md)
 
 ## 当前范围与后续计划
 
@@ -110,7 +117,7 @@ pnpm test
 
 **不在当前版本**：
 
-- NTRIP Client / Server / Caster
+- NTRIP Server / Caster
 - RTCM / 接收机原始格式转换
 - NMEA GGA 请求、周期命令、relay-back
 - Foxglove WebSocket 输出适配器

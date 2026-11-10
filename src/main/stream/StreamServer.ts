@@ -113,10 +113,15 @@ export class StreamServer {
   }
 
   private syncInputStatus(): void {
-    if (!this.running || this.input.type !== "file") {
+    if (!this.running) {
       return;
     }
-    if (this.input.getStatus().status === "idle") {
+    if (this.input.type === "ntrip-client") {
+      const status = this.input.getStatus();
+      this.statistics.setInputStatus(status.status, status.error);
+      return;
+    }
+    if (this.input.type === "file" && this.input.getStatus().status === "idle") {
       this.statistics.setInputStatus("idle");
     }
   }

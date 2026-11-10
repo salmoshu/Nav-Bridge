@@ -5,8 +5,12 @@ import { IpcBridge } from "./ipc/bridge";
 import { destroyMonitorWindow, sendMonitorLog } from "./monitor/MonitorWindow";
 import { resolveThemeMode, themeBackgroundColors } from "../shared/theme";
 import { createMainWindowOptions } from "./windowOptions";
+import electronUpdater from "electron-updater";
+import { UpdateManager } from "./update/UpdateManager";
+import { UpdateIpcBridge } from "./update/UpdateIpcBridge";
 
 const configStore = new ConfigStore();
+let updateManager: UpdateManager;
 
 function logToMonitor(level: "info" | "warn" | "error", message: string): void {
   sendMonitorLog({
@@ -61,6 +65,8 @@ function createWindow(): void {
 
   const bridge = new IpcBridge(mainWindow, configStore);
   bridge.register();
+  const updateBridge = new UpdateIpcBridge(mainWindow, updateManager, () => bridge.dispose());
+  updateBridge.register();
 
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
@@ -71,6 +77,7 @@ function createWindow(): void {
   });
 
   mainWindow.on("closed", () => {
+    updateBridge.dispose();
     destroyMonitorWindow();
     void bridge.dispose();
   });
@@ -87,7 +94,14 @@ function createWindow(): void {
 
 void app.whenReady().then(() => {
   logToMonitor("info", "Application started");
+  const portable = process.env.PORTABLE_EXECUTABLE_FILE != undefined;
+  updateManager = new UpdateManager(
+    app.isPackaged && !portable ? electronUpdater.autoUpdater : undefined,
+    app.getVersion(),
+    portable ? "便携版暂不支持自动安装更新，请使用 Setup 安装版。" : undefined
+  );
   createWindow();
+  void updateManager.checkForUpdates();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();

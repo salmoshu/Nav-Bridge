@@ -34,7 +34,8 @@ import {
   formatEndpointType,
   isClientEndpoint,
   isFileEndpoint,
-  isServerEndpoint
+  isServerEndpoint,
+  parseNtripAddress
 } from "../lib/endpointConfig";
 import { buildStatusMap } from "../lib/endpointStatus";
 import {
@@ -322,6 +323,11 @@ function EndpointPathEditor({
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
+    if (endpoint.type === "ntrip-client") {
+      const parsed = parseNtripAddress(value);
+      if (parsed != undefined) onChange({ ...endpoint, params: { ...endpoint.params, ...parsed } });
+      return;
+    }
     if (isServerEndpoint(endpoint)) {
       const port = parseServerPort(value);
       if (port == undefined) {
@@ -365,13 +371,16 @@ function EndpointPathEditor({
     });
   };
 
-  const placeholder = isServerEndpoint(endpoint)
-    ? "port"
-    : isClientEndpoint(endpoint)
-      ? "host:port"
-      : isFileEndpoint(endpoint)
-        ? "file path"
-        : "port@baudRate";
+  const placeholder =
+    endpoint.type === "ntrip-client"
+      ? "host:port/mountpoint"
+      : isServerEndpoint(endpoint)
+        ? "port"
+        : isClientEndpoint(endpoint)
+          ? "host:port"
+          : isFileEndpoint(endpoint)
+            ? "file path"
+            : "port@baudRate";
 
   const displayValue =
     isServerEndpoint(endpoint) && focused

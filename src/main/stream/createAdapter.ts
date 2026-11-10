@@ -1,8 +1,10 @@
 import type {
   FileParams,
+  NtripClientParams,
   SerialParams,
   StreamEndpoint,
   StreamMode,
+  StreamOptions,
   TcpClientParams,
   TcpServerParams,
   UdpClientParams,
@@ -10,11 +12,16 @@ import type {
 } from "../../shared/stream";
 import type { StreamAdapter } from "./adapters/StreamAdapter";
 import { FileAdapter } from "./adapters/FileAdapter";
+import { NtripClientAdapter } from "./adapters/NtripClientAdapter";
 import { SerialAdapter } from "./adapters/SerialAdapter";
 import { TcpAdapter } from "./adapters/TcpAdapter";
 import { UdpAdapter } from "./adapters/UdpAdapter";
 
-export function createAdapter(endpoint: StreamEndpoint, mode: StreamMode): StreamAdapter {
+export function createAdapter(
+  endpoint: StreamEndpoint,
+  mode: StreamMode,
+  options: Partial<StreamOptions> = {}
+): StreamAdapter {
   switch (endpoint.type) {
     case "tcp-server":
       return new TcpAdapter(endpoint.id, mode, {
@@ -26,6 +33,11 @@ export function createAdapter(endpoint: StreamEndpoint, mode: StreamMode): Strea
         type: endpoint.type,
         params: endpoint.params as TcpClientParams
       });
+    case "ntrip-client":
+      if (mode !== "input") {
+        throw new Error("NTRIP client is only supported as an input endpoint");
+      }
+      return new NtripClientAdapter(endpoint.id, mode, endpoint.params as NtripClientParams, options);
     case "udp-server":
       if (mode !== "input") {
         throw new Error("UDP server is only supported as an input endpoint");

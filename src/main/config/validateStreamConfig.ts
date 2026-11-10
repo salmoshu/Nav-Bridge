@@ -1,5 +1,6 @@
 import type {
   FileParams,
+  NtripClientParams,
   SerialParams,
   StreamConfig,
   StreamEndpoint,
@@ -24,7 +25,12 @@ export function validateStreamConfig(config: StreamConfig): void {
   validateEndpoint(config.input.id, config.input.type, config.input.params);
   config.outputs
     .filter((output) => output.enabled)
-    .forEach((output) => validateEndpoint(output.id, output.type, output.params));
+    .forEach((output) => {
+      if (output.type === "ntrip-client") {
+        throw new Error("NTRIP client is only supported as an input endpoint");
+      }
+      validateEndpoint(output.id, output.type, output.params);
+    });
   validateServerPortConflicts(config.input, config.outputs);
 }
 
@@ -38,6 +44,9 @@ function validateEndpoint(id: string, type: string, params: unknown): void {
       return;
     case "tcp-client":
       validateClientParams(params as TcpClientParams, type);
+      return;
+    case "ntrip-client":
+      validateNtripParams(params as NtripClientParams);
       return;
     case "udp-server":
       validateServerParams(params as UdpServerParams, type);
@@ -61,24 +70,21 @@ function validateServerParams(params: TcpServerParams | UdpServerParams, type: s
 }
 
 function validateServerPortConflicts(input: StreamEndpoint, outputs: StreamEndpoint[]): void {
-  const servers = [input, ...outputs.filter((output) => output.enabled)].filter(
-    (
-      endpoint
-    ): endpoint is StreamEndpoint & {
-      type: "tcp-server" | "udp-server";
-      params: TcpServerParams | UdpServerParams;
-    } => endpoint.type === "tcp-server" || endpoint.type === "udp-server"
-  );
-
   const seen = new Map<string, string>();
-  for (const endpoint of servers) {
-    const port = endpoint.params.port;
-    const key = `${endpoint.type}:${port}`;
+  for (const endpoint of [input, ...outputs.filter((output) => output.enabled)]) {
+    const serialTcpPort =
+      endpoint.type === "serial" && endpoint !== input
+        ? (endpoint.params as SerialParams).outputTcpPort
+        : undefined;
+    const type = serialTcpPort ? "tcp-server" : endpoint.type;
+    if (type !== "tcp-server" && type !== "udp-server") continue;
+    const port = serialTcpPort ?? (endpoint.params as TcpServerParams | UdpServerParams).port;
+    // Port 0 asks the OS to assign an available port and cannot conflict in advance.
+    if (port === 0) continue;
+    const key = `${type}:${port}`;
     const existing = seen.get(key);
     if (existing != undefined) {
-      throw new Error(
-        `${formatServerType(endpoint.type)} port ${port} is used by multiple enabled endpoints`
-      );
+      throw new Error(`${formatServerType(type)} port ${port} is used by multiple enabled endpoints`);
     }
     seen.set(key, endpoint.id);
   }
@@ -119,6 +125,23 @@ function validateClientParams(params: TcpClientParams | UdpClientParams, type: s
   assertPort(params.port, `${type}.port`);
 }
 
+function validateNtripParams(params: NtripClientParams): void {
+  validateClientParams(params, "ntrip-client");
+  if (params.port === 0) throw new Error("ntrip-client.port must be between 1 and 65535");
+  assertNonEmpty(params.mountpoint, "ntrip-client.mountpoint");
+  if (params.mountpoint.replace(/^\/+/, "").trim().length === 0) {
+    throw new Error("ntrip-client.mountpoint is required");
+  }
+  if (/[\s\x00-\x1f\x7f]/.test(params.host) || /[\x00-\x1f\x7f]/.test(params.mountpoint)) {
+    throw new Error("NTRIP host and mountpoint must not contain control characters or host whitespace");
+  }
+  for (const key of ["username", "password"] as const) {
+    if (params[key] != undefined && typeof params[key] !== "string") {
+      throw new Error(`ntrip-client.${key} must be a string`);
+    }
+  }
+}
+
 function validateSerialParams(params: SerialParams): void {
   assertNonEmpty(params.port, "serial.port");
   assertPositiveInteger(params.baudRate, "serial.baudRate");
@@ -133,6 +156,9 @@ function validateSerialParams(params: SerialParams): void {
   }
   if (params.flowControl !== "none" && params.flowControl !== "rtscts") {
     throw new Error("serial.flowControl is invalid");
+  }
+  if (params.outputTcpPort != undefined) {
+    assertPort(params.outputTcpPort, "serial.outputTcpPort");
   }
 }
 

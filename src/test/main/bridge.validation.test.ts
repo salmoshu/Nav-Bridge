@@ -1,6 +1,7 @@
 import { ipcChannels } from "../../shared/ipc";
 import { defaultStreamConfig, type StreamConfig } from "../../shared/stream";
 import net from "node:net";
+import { listen, waitFor } from "../stream/networkHelpers";
 
 const mockHandlers = new Map<string, (...args: unknown[]) => unknown>();
 const mockRemoveHandler = jest.fn();
@@ -90,17 +91,6 @@ describe("IpcBridge validation timing", () => {
     };
   }
 
-  async function waitFor(predicate: () => boolean, timeoutMs = 1000): Promise<void> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      if (predicate()) {
-        return;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    throw new Error("Timed out waiting for condition");
-  }
-
   it("saveConfig allows an empty serial port before Start", () => {
     const bridge = new IpcBridge(createWindow() as never);
     bridge.register();
@@ -134,71 +124,86 @@ describe("IpcBridge validation timing", () => {
   });
 
   it("sends status and data IPC events for TCP client input payloads", async () => {
+    const clients = new Set<net.Socket>();
     const sourceServer = net.createServer((socket) => {
+      clients.add(socket);
+      socket.once("close", () => clients.delete(socket));
       socket.write(Buffer.from("bridge-data"));
     });
-    await new Promise<void>((resolve) => sourceServer.listen(0, "127.0.0.1", resolve));
-    const address = sourceServer.address();
-    if (typeof address === "string" || address == undefined) {
-      throw new Error("Expected TCP address object");
-    }
-
     const window = createWindow();
     const bridge = new IpcBridge(window as never);
-    bridge.register();
-    const handler = mockHandlers.get(ipcChannels.startServer);
-    expect(handler).toBeDefined();
+    try {
+      const port = await listen(sourceServer);
+      bridge.register();
+      const handler = mockHandlers.get(ipcChannels.startServer);
+      expect(handler).toBeDefined();
 
-    const config: StreamConfig = {
-      ...defaultStreamConfig,
-      input: {
-        id: "input",
-        type: "tcp-client",
-        enabled: true,
-        params: { host: "127.0.0.1", port: address.port }
-      },
-      outputs: [
-        {
-          id: "output-1",
-          type: "udp-client",
+      const config: StreamConfig = {
+        ...defaultStreamConfig,
+        options: { ...defaultStreamConfig.options, statusInterval: 100 },
+        input: {
+          id: "input",
+          type: "tcp-client",
           enabled: true,
-          params: { host: "127.0.0.1", port: 2201 }
+          params: { host: "127.0.0.1", port }
+        },
+        outputs: [
+          {
+            id: "output-1",
+            type: "udp-client",
+            enabled: true,
+            params: { host: "127.0.0.1", port: 2201 }
+          }
+        ]
+      };
+
+      await expect(handler!({}, config)).resolves.toEqual({ success: true });
+      await waitFor(() =>
+        window.webContents.send.mock.calls.some(
+          ([channel, payload]) => channel === ipcChannels.data && Array.isArray(payload.data)
+        )
+      );
+      await waitFor(() =>
+        window.webContents.send.mock.calls.some(
+          ([channel, payload]) => channel === ipcChannels.status && payload.input.bytes === 11
+        )
+      );
+
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        ipcChannels.data,
+        expect.objectContaining({ data: Buffer.from("bridge-data").toJSON().data })
+      );
+      expect(window.webContents.send).not.toHaveBeenCalledWith(
+        ipcChannels.log,
+        expect.objectContaining({ message: expect.stringContaining("Data input") })
+      );
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        ipcChannels.status,
+        expect.objectContaining({ input: expect.objectContaining({ bytes: 11 }) })
+      );
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        ipcChannels.log,
+        expect.objectContaining({ message: expect.stringContaining("Input connected") })
+      );
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        ipcChannels.log,
+        expect.objectContaining({ message: expect.stringContaining("First data: 11 bytes") })
+      );
+
+      const stopHandler = mockHandlers.get(ipcChannels.stopServer);
+      await stopHandler?.({});
+    } finally {
+      try {
+        await bridge.dispose();
+      } finally {
+        for (const socket of clients) socket.destroy();
+        if (sourceServer.listening) {
+          await new Promise<void>((resolve, reject) =>
+            sourceServer.close((error) => (error ? reject(error) : resolve()))
+          );
         }
-      ]
-    };
-
-    await expect(handler!({}, config)).resolves.toEqual({ success: true });
-    await waitFor(() =>
-      window.webContents.send.mock.calls.some(
-        ([channel, payload]) => channel === ipcChannels.data && Array.isArray(payload.data)
-      )
-    );
-
-    expect(window.webContents.send).toHaveBeenCalledWith(
-      ipcChannels.data,
-      expect.objectContaining({ data: Buffer.from("bridge-data").toJSON().data })
-    );
-    expect(window.webContents.send).not.toHaveBeenCalledWith(
-      ipcChannels.log,
-      expect.objectContaining({ message: expect.stringContaining("Data input") })
-    );
-    expect(
-      window.webContents.send.mock.calls.some(
-        ([channel, payload]) => channel === ipcChannels.status && payload.input.bytes > 0
-      )
-    ).toBe(true);
-    expect(window.webContents.send).toHaveBeenCalledWith(
-      ipcChannels.log,
-      expect.objectContaining({ message: expect.stringContaining("Input connected") })
-    );
-    expect(window.webContents.send).toHaveBeenCalledWith(
-      ipcChannels.log,
-      expect.objectContaining({ message: expect.stringContaining("First data: 11 bytes") })
-    );
-
-    const stopHandler = mockHandlers.get(ipcChannels.stopServer);
-    await stopHandler?.({});
-    await new Promise<void>((resolve) => sourceServer.close(() => resolve()));
+      }
+    }
   });
 
   it("showFileDialog uses an open dialog for input mode and defaults to the app path", async () => {

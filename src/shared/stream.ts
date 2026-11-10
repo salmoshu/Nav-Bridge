@@ -1,4 +1,5 @@
-export type StreamType = "tcp-server" | "tcp-client" | "udp-server" | "udp-client" | "serial" | "file";
+export type StreamType =
+  "tcp-server" | "tcp-client" | "ntrip-client" | "udp-server" | "udp-client" | "serial" | "file";
 export type StreamMode = "input" | "output";
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "waiting" | "error";
 
@@ -11,6 +12,14 @@ export interface TcpClientParams {
   host: string;
   port: number;
   connectMessage?: string;
+}
+
+export interface NtripClientParams {
+  host: string;
+  port: number;
+  mountpoint: string;
+  username?: string;
+  password?: string;
 }
 
 export interface UdpServerParams {
@@ -30,6 +39,8 @@ export interface SerialParams {
   parity: "none" | "even" | "odd";
   stopBits: 1 | 2;
   flowControl: "none" | "rtscts";
+  /** Optional TCP server port that broadcasts bytes received from the serial device. */
+  outputTcpPort?: number;
 }
 
 export interface FileParams {
@@ -41,7 +52,13 @@ export interface FileParams {
 }
 
 export type StreamEndpointParams =
-  TcpServerParams | TcpClientParams | UdpServerParams | UdpClientParams | SerialParams | FileParams;
+  | TcpServerParams
+  | TcpClientParams
+  | NtripClientParams
+  | UdpServerParams
+  | UdpClientParams
+  | SerialParams
+  | FileParams;
 
 export interface StreamEndpoint {
   id: string;

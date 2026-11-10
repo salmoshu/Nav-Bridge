@@ -1,24 +1,26 @@
 import net from "node:net";
+import { once } from "node:events";
 import { TcpAdapter } from "../../main/stream/adapters/TcpAdapter";
 import { StreamServer } from "../../main/stream/StreamServer";
+import { connect, listen, waitFor } from "./networkHelpers";
 
 describe("TCP client input + TCP server output data flow", () => {
   it("forwards data from a TCP client input to a connected TCP server output", async () => {
+    let externalSocket: net.Socket | undefined;
+    let tearingDown = false;
+    const errors: Error[] = [];
     const externalServer = net.createServer((socket) => {
-      const interval = setInterval(() => {
-        socket.write(Buffer.from("hello-from-external"));
-      }, 20);
-      socket.on("close", () => clearInterval(interval));
+      externalSocket = socket;
+      socket.on("error", (error: NodeJS.ErrnoException) => {
+        // Windows may reset a socket that is destroyed during test teardown.
+        if (!tearingDown || error.code !== "ECONNRESET") errors.push(error);
+      });
     });
-    await new Promise<void>((resolve) => externalServer.listen(0, "127.0.0.1", resolve));
-    const externalAddress = externalServer.address();
-    if (typeof externalAddress === "string" || externalAddress == undefined) {
-      throw new Error("Expected TCP address object");
-    }
+    const externalPort = await listen(externalServer);
 
     const input = new TcpAdapter("input", "input", {
       type: "tcp-client",
-      params: { host: "127.0.0.1", port: externalAddress.port }
+      params: { host: "127.0.0.1", port: externalPort }
     });
 
     const output = new TcpAdapter("output-1", "output", {
@@ -36,28 +38,27 @@ describe("TCP client input + TCP server output data flow", () => {
       dataEntries.push({ data: entry.data });
     });
 
-    await server.start();
-
-    // Wait for input to connect
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Connect a client to the output TCP server
-    const outputPort = output.getBoundPort();
-    const outputClient = net.createConnection({ host: "127.0.0.1", port: outputPort });
-    outputClient.on("error", () => undefined);
-    await new Promise<void>((resolve) => outputClient.once("connect", resolve));
-
-    // Wait for data to be forwarded
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    expect(dataEntries.length).toBeGreaterThan(0);
-
-    const connectedStatus = server.getStatus();
-    expect(connectedStatus.outputs[0]?.status).toBe("connected");
-    expect(connectedStatus.outputs[0]?.bytes).toBeGreaterThan(0);
-
-    outputClient.destroy();
-    await server.stop();
-    await new Promise<void>((resolve) => externalServer.close(() => resolve()));
+    let outputClient: net.Socket | undefined;
+    try {
+      await server.start();
+      outputClient = await connect(output.getBoundPort());
+      await waitFor(() => output.getClients() === 1 && externalSocket != undefined);
+      const received = once(outputClient, "data");
+      const message = Buffer.from("hello-from-external");
+      externalSocket!.write(message);
+      expect((await received)[0]).toEqual(message);
+      await waitFor(() => server.getStatus().outputs[0].bytes === message.length);
+      expect(dataEntries).toEqual([{ data: Array.from(message) }]);
+      expect(server.getStatus().outputs[0].status).toBe("connected");
+    } finally {
+      tearingDown = true;
+      externalSocket?.end();
+      outputClient?.end();
+      await server.stop();
+      externalSocket?.destroy();
+      outputClient?.destroy();
+      await new Promise<void>((resolve) => externalServer.close(() => resolve()));
+    }
+    expect(errors).toEqual([]);
   });
 });

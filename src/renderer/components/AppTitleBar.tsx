@@ -2,12 +2,16 @@ import CloseIcon from "@mui/icons-material/Close";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { Box, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
+import { Box, Button, ButtonBase, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import { useState } from "react";
 import logoUrl from "../assets/logo.svg";
 import { useNavBridgeAPI } from "../hooks/useNavBridgeAPI";
 import { type ThemeMode } from "../lib/themeMode";
 import { windowControlButtons } from "../lib/windowControls";
 import { ThemeModeSelector } from "./ThemeModeSelector";
+import { useAppUpdate } from "../hooks/useAppUpdate";
+import { UpdateDialog } from "./UpdateDialog";
 
 export interface AppTitleBarProps {
   alwaysOnTop: boolean;
@@ -24,6 +28,8 @@ export function AppTitleBar({
 }: AppTitleBarProps) {
   const api = useNavBridgeAPI();
   const theme = useTheme();
+  const update = useAppUpdate();
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   return (
     <Box
@@ -56,9 +62,20 @@ export function AppTitleBar({
           <Typography variant="subtitle2" fontWeight={700} color="text.primary" noWrap fontSize="0.8125rem">
             Nav-Bridge
           </Typography>
-          <Typography component="span" variant="caption" color="text.secondary" fontSize="0.6875rem">
-            V{__APP_VERSION__}
-          </Typography>
+          <Tooltip title="检查更新">
+            <ButtonBase
+              aria-label="检查更新"
+              onClick={() => {
+                setUpdateOpen(true);
+                void update.checkForUpdates();
+              }}
+              sx={{ borderRadius: 0.5, px: 0.25, WebkitAppRegion: "no-drag", appRegion: "no-drag" }}
+            >
+              <Typography component="span" variant="caption" color="text.secondary" fontSize="0.6875rem">
+                V{__APP_VERSION__}
+              </Typography>
+            </ButtonBase>
+          </Tooltip>
         </Box>
       </Stack>
 
@@ -69,6 +86,17 @@ export function AppTitleBar({
         alignItems="center"
         sx={{ WebkitAppRegion: "no-drag", appRegion: "no-drag" }}
       >
+        {(update.state.phase === "downloaded" || update.state.phase === "installing") && (
+          <Button
+            size="small"
+            startIcon={<SystemUpdateAltIcon sx={{ fontSize: 14 }} />}
+            disabled={update.state.phase === "installing"}
+            onClick={() => void update.installUpdate()}
+            sx={{ minWidth: 0, px: 0.75, py: 0.125, fontSize: "0.6875rem" }}
+          >
+            更新
+          </Button>
+        )}
         <ThemeModeSelector mode={themeMode} onChange={onThemeChange} />
 
         {windowControlButtons.map((button) => {
@@ -116,6 +144,13 @@ export function AppTitleBar({
           );
         })}
       </Stack>
+      <UpdateDialog
+        open={updateOpen}
+        state={update.state}
+        onClose={() => setUpdateOpen(false)}
+        onCheck={() => void update.checkForUpdates()}
+        onInstall={() => void update.installUpdate()}
+      />
     </Box>
   );
 }

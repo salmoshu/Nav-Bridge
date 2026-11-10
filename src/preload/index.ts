@@ -3,8 +3,17 @@ import type { NavBridgeAPI, SerialPortInfo, WindowResizeEdge } from "../shared/i
 import { ipcChannels } from "../shared/ipc";
 import type { LogEntry, StreamConfig, StreamDataEntry, StreamMode, StreamStatus } from "../shared/stream";
 import type { ThemeMode } from "../shared/theme";
+import type { AppUpdateState } from "../shared/update";
 
 const api: NavBridgeAPI = {
+  getUpdateState: async () => await ipcRenderer.invoke(ipcChannels.getUpdateState),
+  checkForUpdates: async () => await ipcRenderer.invoke(ipcChannels.checkForUpdates),
+  installUpdate: async () => await ipcRenderer.invoke(ipcChannels.installUpdate),
+  onUpdateStateChange: (callback: (state: AppUpdateState) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: AppUpdateState): void => callback(state);
+    ipcRenderer.on(ipcChannels.updateStateChanged, listener);
+    return () => ipcRenderer.off(ipcChannels.updateStateChanged, listener);
+  },
   startServer: async (config: StreamConfig) => await ipcRenderer.invoke(ipcChannels.startServer, config),
   stopServer: async () => {
     await ipcRenderer.invoke(ipcChannels.stopServer);
