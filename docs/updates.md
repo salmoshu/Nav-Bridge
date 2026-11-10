@@ -26,6 +26,8 @@ Windows Setup 安装版在每次启动时检查 GitHub Releases 中的最新稳�
 
 日常 `pnpm build` 使用 `--publish never`，仅在本地产生构建产物。提交标签和发布 Release 是独立操作。
 
+若标签已经推送但构建没有触发，可在 GitHub 的 Actions → Release Windows → Run workflow 中选择 `main`，在 `tag` 中填写已有标签（例如 `v0.1.1`）。工作流会检出该标签，核对其版本号后重新测试、构建和发布，无需移动标签。
+
 `pnpm smoke` 会启动隐藏的 Electron 窗口，验证真实渲染、版本更新窗口、本地更新源下载以及损坏文件的 SHA-512 校验。测试数据只写入 `dist/smoke`，不会安装更新或修改日常使用的应用配置。
 
 也可以手动构建并上传：
